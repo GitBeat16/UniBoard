@@ -134,3 +134,4 @@ supabase/migrations/     schema, RLS
   first. A scanned PDF has no text layer, and that case is reported rather than silently
   returning an empty timetable.
 - **Light mode only**, by decision. The design is built on white (PLAN.md §8).
+# UniBoard
