@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   UniBoard — "Paper & Doodle"
+   White cards floating on soft colour blocks, heavy black geometric type,
+   hand-drawn line work. Light-only by decision (see PLAN.md §8): this style is
+   built on white, and a half-committed dark theme would look worse than none.
+   --------------------------------------------------------------------------- */
+
+@theme {
+  /* --- core ------------------------------------------------------------- */
+  --color-ink: #111111;
+  --color-paper: #ffffff;
+  --color-canvas: #eff1f0;
+  /* Measured, not eyeballed: the original #a8aeb4 was 2.24:1 on white — a
+     WCAG AA failure for every piece of secondary text in the app, and 1.38:1
+     where it sat over a blob. This is 5.82:1 on paper, 5.13:1 on canvas, and
+     still reads clearly as secondary next to --color-ink. */
+  --color-muted: #5f666d;
+  --color-hairline: #e7e9e8;
+
+  /* --- accents ---------------------------------------------------------- */
+  --color-coral: #f2846b;
+  --color-sky: #7bb1eb;
+  --color-sun: #f5ce72;
+  --color-leaf: #7bc47f;
+  --color-iris: #7b6fd4;
+
+  /* --- accent tints: the soft halo behind module icons ------------------- */
+  --color-coral-soft: #fdede8;
+  --color-sky-soft: #eaf3fc;
+  --color-sun-soft: #fdf6e6;
+  --color-leaf-soft: #ecf7ed;
+  --color-iris-soft: #eeecfa;
+
+  /* --- shape ------------------------------------------------------------ */
+  --radius-card: 32px;
+  --radius-tile: 24px;
+  --radius-chip: 16px;
+
+  /* One elevation only. Soft, never harsh. */
+  --shadow-soft: 0 12px 32px rgba(17, 17, 17, 0.06);
+  --shadow-lift: 0 18px 40px rgba(17, 17, 17, 0.1);
+
+  /* --- type ------------------------------------------------------------- */
+  --font-display: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+
+  --text-display: 2.125rem;
+  --text-display--line-height: 2.375rem;
+  --text-display--letter-spacing: -0.02em;
+  --text-h1: 1.75rem;
+  --text-h1--line-height: 2rem;
+  --text-h1--letter-spacing: -0.015em;
+  --text-h2: 1.375rem;
+  --text-h2--line-height: 1.625rem;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1rem;
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 0.875rem;
+  --text-caption--letter-spacing: 0.04em;
+
+  /* --- motion: slow and soft, nothing bouncy ----------------------------- */
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Money and attendance figures must not jitter as they change. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
