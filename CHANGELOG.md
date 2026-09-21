@@ -9,6 +9,31 @@ campus events · **1.0.0** when every module in PLAN.md is live.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-21
+
+Money (M6 in PLAN.md).
+
+### Added
+- **A budget.** Set one number per week or per month, optionally with a food
+  cap inside it, in your own currency (₹ by default). The sketched ring shows
+  what today can still take, what has gone, and an even share per day for
+  the rest of the period. A status word says whether you are on track,
+  running quick, or over.
+- **Logging a spend.** Amount, one of five categories and an optional note.
+  This period's spends are listed underneath, and any of them can be removed.
+- **Food nearby.** Pin your campus once, either from where you are standing or
+  by pasting coordinates from Google Maps. Cafés, canteens and restaurants
+  from OpenStreetMap are then listed by walking time, with a veg-friendly
+  filter, opening hours where they are mapped, a link to open each place in
+  maps, and a button to log a spend there.
+- Flora knows about money: she mentions an overspent or fast-running budget,
+  but a module under its attendance threshold still outranks it.
+
+### Notes
+- OpenStreetMap rarely has prices for Indian cafés, so UniBoard shows no price
+  bands rather than guessing any.
+- "Today" and "this week" are worked out on your phone, in your time zone.
+
 ## [0.2.0] — 2026-09-21
 
 The design pass (P5 in PLAN.md).

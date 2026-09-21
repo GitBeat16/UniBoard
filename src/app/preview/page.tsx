@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { BlobBackground } from "@/components/ui/blob-background";
 import { BottomNav } from "@/components/ui/bottom-nav";
-import { PhasePlaceholder } from "@/components/ui/phase-placeholder";
 import * as Icons from "@/components/ui/icons";
 import { Illustration, type IllustrationName } from "@/components/ui/illustration";
 import { SketchRing } from "@/components/charts/sketch-ring";
@@ -12,8 +11,14 @@ import { AdvisorView } from "@/components/advisor/advisor-view";
 import { Flora, type FloraMood } from "@/components/flora/flora";
 import { BoardView } from "@/components/screens/board-view";
 import { MeView } from "@/components/screens/me-view";
+import { MoneyView } from "@/components/screens/money-view";
+import { PlacesList } from "@/components/money/places-list";
 import {
   sampleAdvisorPayload,
+  sampleBudgets,
+  sampleCampus,
+  sampleExpenses,
+  samplePlaces,
   sampleGoals,
   sampleModules,
   sampleNextSession,
@@ -66,8 +71,7 @@ export default function PreviewPage() {
         </p>
         <h1 className="mt-2 text-h1 font-bold">UniBoard screens</h1>
         <p className="mt-2 max-w-2xl text-body text-muted">
-          The real components with sample props. Everything here is built except
-          Money, which stays an honest placeholder until v0.3.
+          The real components with sample props, no database.
         </p>
       </header>
 
@@ -201,13 +205,17 @@ export default function PreviewPage() {
           <BoardView items={sampleWork} modules={sampleModules} />
         </Phone>
 
-        <Phone label="Money — v0.3">
-          <PhasePlaceholder
-            light="Food and"
-            bold="budget"
-            phase="Coming in v0.3"
-            illustration="money"
-            what="Places ranked by walk-time from your next class, filtered to what is left in today's budget. Plus quick spend logging."
+        <Phone label="Money — new account">
+          <MoneyView currency="INR" budgets={[]} expenses={[]} campus={null} places={null} />
+        </Phone>
+
+        <Phone label="Money — a week in">
+          <MoneyView
+            currency="INR"
+            budgets={sampleBudgets}
+            expenses={sampleExpenses}
+            campus={sampleCampus}
+            places={<PlacesList places={samplePlaces} />}
           />
         </Phone>
 

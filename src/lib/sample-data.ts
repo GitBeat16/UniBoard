@@ -3,6 +3,8 @@ import type { AdvisorPayload } from "@/components/advisor/advisor-view";
 import type { GoalVM, ProfileVM } from "@/components/screens/me-view";
 import type { WorkItem } from "@/lib/work/urgency";
 import type { SessionVM } from "@/lib/view-models";
+import type { Budget, Expense } from "@/lib/money/budget";
+import type { Place } from "@/lib/places/overpass";
 
 /**
  * Fixtures for the /preview gallery only. Never imported by the app itself —
@@ -222,3 +224,31 @@ export const sampleAdvisorPayload: AdvisorPayload = {
   work: sampleWork,
   goals: sampleGoals.map((g) => ({ id: g.id, title: g.title, kind: g.kind })),
 };
+
+// ---------------------------------------------------------------- money
+
+function minutesAgo(m: number) {
+  return new Date(Date.now() - m * 60_000).toISOString();
+}
+
+export const sampleBudgets: Budget[] = [
+  { kind: "week", total: 1500, food: 800, startsOn: "2026-01-01" },
+];
+
+/** Recent enough to land in the current week on any day but a Monday morning. */
+export const sampleExpenses: Expense[] = [
+  { id: "x1", amount: 60, category: "food", note: "Vada pav + chai", spentAt: minutesAgo(40) },
+  { id: "x2", amount: 30, category: "transport", note: "Bus pass top-up", spentAt: minutesAgo(180) },
+  { id: "x3", amount: 140, category: "food", note: "Canteen thali", spentAt: minutesAgo(60 * 20) },
+  { id: "x4", amount: 250, category: "study", note: "Lab manual printouts", spentAt: minutesAgo(60 * 26) },
+  { id: "x5", amount: 199, category: "fun", note: null, spentAt: minutesAgo(60 * 30) },
+];
+
+export const sampleCampus = { lat: 18.4575, lng: 73.8508, label: "PICT main gate" };
+
+export const samplePlaces: Place[] = [
+  { id: "node/1", name: "College Canteen", lat: 18.4577, lng: 73.8509, kind: "food_court", cuisine: "Indian", veg: "yes", hours: "Mo-Sa 08:00-20:00", distanceM: 40, walkMin: 1 },
+  { id: "node/2", name: "Chai Point", lat: 18.4582, lng: 73.8514, kind: "cafe", cuisine: "Tea, Snacks", veg: "only", hours: null, distanceM: 160, walkMin: 3 },
+  { id: "node/3", name: "Sai Snacks Centre", lat: 18.4561, lng: 73.8521, kind: "fast_food", cuisine: "Indian", veg: null, hours: "Mo-Su 09:00-23:00", distanceM: 290, walkMin: 5 },
+  { id: "way/4", name: "Hotel Shreyas", lat: 18.4548, lng: 73.8495, kind: "restaurant", cuisine: "Maharashtrian", veg: "only", hours: null, distanceM: 440, walkMin: 7 },
+];

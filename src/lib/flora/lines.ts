@@ -19,7 +19,8 @@ export type FloraScreen =
   | "timetable"
   | "board"
   | "me"
-  | "advisor";
+  | "advisor"
+  | "money";
 
 export type FloraContext = {
   screen: FloraScreen;
@@ -34,6 +35,10 @@ export type FloraContext = {
   nothingOnToday?: boolean;
   goalCount?: number;
   verdict?: Verdict;
+  /** Money screen: where the current budget stands. */
+  budget?: "none" | "fine" | "tight" | "over";
+  budgetKind?: "week" | "month";
+  hasCampus?: boolean;
 };
 
 export type FloraSpeech = {
@@ -111,6 +116,36 @@ export function floraSpeech(ctx: FloraContext): FloraSpeech | null {
       mood: "thinking",
       text: "One of your modules is getting close to the line. Check before you skip.",
     };
+  }
+
+  // --- Money, on its own screen -------------------------------------------
+  // Below attendance and deadlines on purpose: an overspent week is worth
+  // knowing, a module under threshold is worth acting on.
+  if (ctx.screen === "money") {
+    const period = ctx.budgetKind === "month" ? "month" : "week";
+    switch (ctx.budget) {
+      case "over":
+        return {
+          mood: "worried",
+          text: `You're past this ${period}'s budget. Worth knowing, not a disaster.`,
+        };
+      case "tight":
+        return { mood: "thinking", text: `Spending's running a little quick this ${period}.` };
+      case "none":
+        return {
+          mood: "neutral",
+          text: "Set a budget and I'll keep the running maths for you.",
+          action: "point",
+        };
+    }
+    if (ctx.hasCampus === false) {
+      return {
+        mood: "neutral",
+        text: "Drop a campus pin and I'll find food close by.",
+        action: "point",
+      };
+    }
+    return { mood: "happy", text: "Money's comfortable. Enjoy lunch." };
   }
 
   // --- Setup nudges --------------------------------------------------------

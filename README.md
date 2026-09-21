@@ -7,6 +7,8 @@ See [PLAN.md](PLAN.md) for the product plan, design system and phase breakdown.
 
 ## Status
 
+**v0.3:** P0–P4, the P5 design pass and Money are done.
+
 **P0–P4 done:** scaffold, timetable + attendance, the Skip Advisor, the work board, and
 Reclaim (a skipped class becomes a real plan). Motion and Flora were pulled forward from
 P5. Timetables can also be read from a photo or PDF, and everything publishes to a
@@ -167,5 +169,17 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
 - **Groq's vision model takes images only.** PDFs go through `unpdf` text extraction
   first. A scanned PDF has no text layer, and that case is reported rather than silently
   returning an empty timetable.
+- **Money is computed in the browser.** "Today", "this week" and "this month" are the
+  student's local ones and the server runs in UTC, so `money/page.tsx` only fetches rows
+  and `summarize()` (`src/lib/money/budget.ts`, pure and tested) runs on the client. The
+  one date the server accepts from the browser — the day a budget starts — is checked to
+  be within a day of its own clock.
+- **Food nearby comes from OpenStreetMap's Overpass API**, keyless. Queries are cached for a
+  day per ~110 m cell through Next's fetch cache, fall back to a mirror when the main
+  instance is busy, and stream in under `<Suspense>` so a slow map never holds up the
+  budget. The OSM attribution under the list is a licence requirement; keep it.
+- **Nothing about location is tracked.** The campus pin is set once, by the student, from
+  a single geolocation fix or a pasted coordinate, and it is the only location UniBoard
+  ever sends anywhere.
 - **Light mode only**, by decision. The design is built on white (PLAN.md §8).
 # UniBoard

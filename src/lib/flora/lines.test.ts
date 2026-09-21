@@ -110,3 +110,42 @@ describe("tone", () => {
     expect(floraSpeech(home({ dueTodayCount: 4 }))?.text).toMatch(/4 things/);
   });
 });
+
+describe("money", () => {
+  const money = (over: Partial<FloraContext> = {}): FloraContext => ({
+    screen: "money",
+    hasCampus: true,
+    ...over,
+  });
+
+  it("maps each budget state to a mood that matches it", () => {
+    expect(floraSpeech(money({ budget: "over" }))?.mood).toBe("worried");
+    expect(floraSpeech(money({ budget: "tight" }))?.mood).toBe("thinking");
+    expect(floraSpeech(money({ budget: "fine" }))?.mood).toBe("happy");
+  });
+
+  it("names the period the budget actually covers", () => {
+    expect(floraSpeech(money({ budget: "tight", budgetKind: "month" }))?.text).toMatch(/month/);
+    expect(floraSpeech(money({ budget: "tight" }))?.text).toMatch(/week/);
+  });
+
+  it("asks for a budget, then for a campus pin, only once nothing is wrong", () => {
+    expect(floraSpeech(money({ budget: "none", hasCampus: false }))?.text).toMatch(/budget/);
+    expect(floraSpeech(money({ budget: "fine", hasCampus: false }))?.text).toMatch(/campus pin/);
+  });
+
+  it("still lets a module under threshold outrank money", () => {
+    expect(floraSpeech(money({ budget: "over", modulesBelow: 1 }))?.text).toMatch(/threshold/);
+  });
+
+  it("keeps the same tone and bubble rules as every other line", () => {
+    for (const budget of ["none", "fine", "tight", "over"] as const) {
+      for (const budgetKind of ["week", "month"] as const) {
+        const text = floraSpeech(money({ budget, budgetKind }))?.text ?? "";
+        expect(text.length).toBeGreaterThan(0);
+        expect(text.length).toBeLessThanOrEqual(78);
+        expect(text).not.toMatch(/should|must|lazy|behind|hurry|deserve/i);
+      }
+    }
+  });
+});

@@ -418,7 +418,11 @@ export type Database = {
         Row: {
           attendance_monitored: boolean
           calendar_token: string
+          campus_label: string | null
+          campus_lat: number | null
+          campus_lng: number | null
           created_at: string
+          currency: string
           display_name: string | null
           id: string
           onboarded_at: string | null
@@ -428,7 +432,11 @@ export type Database = {
         Insert: {
           attendance_monitored?: boolean
           calendar_token?: string
+          campus_label?: string | null
+          campus_lat?: number | null
+          campus_lng?: number | null
           created_at?: string
+          currency?: string
           display_name?: string | null
           id: string
           onboarded_at?: string | null
@@ -438,7 +446,11 @@ export type Database = {
         Update: {
           attendance_monitored?: boolean
           calendar_token?: string
+          campus_label?: string | null
+          campus_lat?: number | null
+          campus_lng?: number | null
           created_at?: string
+          currency?: string
           display_name?: string | null
           id?: string
           onboarded_at?: string | null
