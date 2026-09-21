@@ -12,6 +12,14 @@ import {
   VisionError,
 } from "@/lib/ics/vision";
 import { extractModule, moduleKey, toneForIndex } from "@/lib/ics/module-map";
+import {
+  addDays,
+  parseClock,
+  wallTimeToInstant,
+  wallToday,
+  weekdayOf,
+  zoneOrFallback,
+} from "@/lib/time/zone";
 import type { Enums, TablesInsert } from "@/lib/supabase/database.types";
 
 export type ActionState = { ok: boolean; message: string } | null;
@@ -60,6 +68,9 @@ export async function importTimetable(
   const pasted = String(formData.get("ics") ?? "").trim();
   const file = formData.get("file");
   const weeks = Math.min(30, Math.max(1, Number(formData.get("weeks") ?? 12) || 12));
+  // The student's zone, from the browser. Wall-clock times in a photo, a
+  // hand-typed class or a zone-less feed mean *their* clock, not the server's.
+  const timeZone = zoneOrFallback(formData.get("tz"));
 
   let incoming: IncomingSession[] = [];
   const notes: string[] = [];
@@ -74,7 +85,7 @@ export async function importTimetable(
       const data = Buffer.from(await file.arrayBuffer()).toString("base64");
       const extraction = await extractTimetable({ data, mediaType: file.type });
 
-      incoming = expandExtraction(extraction, { weeks, from: new Date() });
+      incoming = expandExtraction(extraction, { weeks, from: new Date(), timeZone });
 
       if (extraction.confidence !== "high") {
         notes.push(
@@ -101,7 +112,7 @@ export async function importTimetable(
         };
       }
 
-      const parsed = parseIcs(text, importWindow());
+      const parsed = parseIcs(text, { ...importWindow(), timeZone });
       incoming = parsed.sessions;
       if (parsed.skipped > 0) notes.push(`${parsed.skipped} entries were unreadable`);
       if (parsed.truncated) notes.push("the feed was very large, so it was trimmed");
@@ -208,6 +219,7 @@ const manualSchema = z.object({
   start: z.string().regex(/^\d{2}:\d{2}$/, "Start time looks wrong."),
   end: z.string().regex(/^\d{2}:\d{2}$/, "End time looks wrong."),
   weeks: z.coerce.number().int().min(1).max(30),
+  tz: z.string().optional(),
 });
 
 export async function addManualClass(
@@ -255,23 +267,21 @@ export async function addManualClass(
   }
 
   const seriesId = crypto.randomUUID();
-  const [sh, sm] = input.start.split(":").map(Number);
-  const [eh, em] = input.end.split(":").map(Number);
+  const timeZone = zoneOrFallback(input.tz);
+  const [sh, sm] = parseClock(input.start)!;
+  const [eh, em] = parseClock(input.end)!;
 
-  // First occurrence: the next matching weekday, today included.
-  const first = new Date();
-  first.setHours(0, 0, 0, 0);
-  first.setDate(first.getDate() + ((input.weekday - first.getDay() + 7) % 7));
+  // First occurrence: the next matching weekday on the student's calendar,
+  // today included. Built as wall-clock times in their zone — setHours() here
+  // would use the server's UTC clock and put a 09:00 class at 14:30 in Pune.
+  const today = wallToday(new Date(), timeZone);
+  const first = addDays(today, (input.weekday - weekdayOf(today) + 7) % 7);
 
   const rows: TablesInsert<"class_sessions">[] = [];
   for (let w = 0; w < input.weeks; w++) {
-    const day = new Date(first);
-    day.setDate(day.getDate() + w * 7);
-
-    const startsAt = new Date(day);
-    startsAt.setHours(sh, sm, 0, 0);
-    const endsAt = new Date(day);
-    endsAt.setHours(eh, em, 0, 0);
+    const day = addDays(first, w * 7);
+    const startsAt = wallTimeToInstant({ ...day, hour: sh, minute: sm }, timeZone);
+    const endsAt = wallTimeToInstant({ ...day, hour: eh, minute: em }, timeZone);
 
     rows.push({
       user_id: user.id,

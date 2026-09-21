@@ -1,65 +1,76 @@
 "use client";
 
-import { useActionState, useId, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Card } from "@/components/ui/card";
-import { Illustration } from "@/components/ui/illustration";
+import { AddToBoard } from "@/components/board/add-to-board";
+import { CampusTray } from "@/components/board/campus-tray";
+import { CardSheet } from "@/components/board/card-sheet";
+import { PinnedCard } from "@/components/board/pinned-card";
+import { Pin } from "@/components/board/pin";
+import { ShapeFrame } from "@/components/board/card-shape";
 import { FloraSays } from "@/components/flora/flora-says";
+import { Card } from "@/components/ui/card";
 import { AnimatedNumber, Rise, Stagger } from "@/components/ui/motion-primitives";
-import { PillButton } from "@/components/ui/pill-button";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { WorkCard } from "@/components/board/work-card";
 import { cn } from "@/lib/cn";
-import { EASE_SOFT, LAYOUT_SPRING } from "@/lib/motion";
+import { LAYOUT_SPRING } from "@/lib/motion";
 import { useNow } from "@/lib/use-now";
 import {
-  outstandingHours,
-  sortByUrgency,
-  urgencyOf,
-  type WorkItem,
-} from "@/lib/work/urgency";
-import { addWork, type ActionState } from "@/app/(app)/board/actions";
+  buildBoard,
+  hasTag,
+  topTags,
+  twoColumns,
+  type BoardCard,
+  type BoardEvent,
+  type CardShape,
+} from "@/lib/board/items";
+import { outstandingHours, urgencyOf, type WorkItem } from "@/lib/work/urgency";
 
-const field =
-  "h-12 w-full rounded-full bg-canvas px-5 text-body text-ink placeholder:text-muted focus:outline-2 focus:outline-offset-2 focus:outline-ink";
+type Filter = "live" | "done" | "all";
 
-type Filter = "live" | "all" | "done";
+export type BoardWork = WorkItem & { shape: CardShape | null };
 
+/**
+ * The soft board. Presentational: the page fetches; this decides nothing
+ * itself — buildBoard() in src/lib/board/items.ts does, and is tested.
+ */
 export function BoardView({
-  items,
+  work,
+  events = [],
   modules,
+  university = null,
 }: {
-  items: WorkItem[];
+  work: BoardWork[];
+  events?: BoardEvent[];
   modules: Array<{ id: string; name: string }>;
+  university?: { name: string; shortName: string | null } | null;
 }) {
   const now = useNow();
   const mounted = now > 0;
+  const nowDate = useMemo(() => new Date(now), [now]);
   const [filter, setFilter] = useState<Filter>("live");
-  const [adding, setAdding] = useState(false);
+  const [tag, setTag] = useState<string | null>(null);
+  const [openKey, setOpenKey] = useState<string | null>(null);
   const filterId = useId();
 
-  const [state, action, pending] = useActionState<ActionState, FormData>(addWork, null);
-
-  const nowDate = useMemo(() => new Date(now), [now]);
-
-  const sorted = useMemo(() => sortByUrgency(items, nowDate), [items, nowDate]);
-
-  const shown = useMemo(
-    () =>
-      sorted.filter((i) => {
-        const u = urgencyOf(i, nowDate);
-        if (filter === "done") return u === "done";
-        if (filter === "live") return u !== "done";
-        return true;
-      }),
-    [sorted, filter, nowDate],
+  const { pinned, campus } = useMemo(
+    () => (mounted ? buildBoard({ work, events, now: nowDate }) : { pinned: [], campus: [] }),
+    [mounted, work, events, nowDate],
   );
 
-  const hours = useMemo(() => outstandingHours(items, nowDate), [items, nowDate]);
-  const overdue = useMemo(
-    () => items.filter((i) => urgencyOf(i, nowDate) === "overdue").length,
-    [items, nowDate],
-  );
+  const shown = pinned.filter((c) => {
+    if (filter === "live" && c.urgency === "done") return false;
+    if (filter === "done" && c.urgency !== "done") return false;
+    return tag ? hasTag(c, tag) : true;
+  });
+  const [left, right] = twoColumns(shown);
+  const tags = useMemo(() => topTags(pinned.filter((c) => c.urgency !== "done")), [pinned]);
+
+  const hours = useMemo(() => outstandingHours(work, nowDate), [work, nowDate]);
+  const overdue = work.filter((i) => urgencyOf(i, nowDate) === "overdue").length;
+  const open = pinned.find((c) => c.key === openKey) ?? null;
+  const onOpen = useCallback((c: BoardCard) => setOpenKey(c.key), []);
+  const onClose = useCallback(() => setOpenKey(null), []);
 
   return (
     <Stagger className="flex flex-col gap-8">
@@ -74,19 +85,17 @@ export function BoardView({
               screen: "board",
               hasTimetable: true,
               overdueCount: overdue,
-              dueTodayCount: items.filter((i) => urgencyOf(i, nowDate) === "today").length,
+              dueTodayCount: work.filter((i) => urgencyOf(i, nowDate) === "today").length,
             }}
           />
         </Rise>
       )}
 
-      {mounted && items.length > 0 && (
+      {mounted && work.length > 0 && (
         <Rise>
           <Card className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-caption font-semibold uppercase text-muted">
-                Next seven days
-              </p>
+              <p className="text-caption font-semibold uppercase text-muted">Next seven days</p>
               <p className="mt-1 text-h1 font-bold tnum">
                 <AnimatedNumber value={hours} decimals={hours % 1 ? 1 : 0} />
                 <span className="text-h2"> h</span>
@@ -103,159 +112,119 @@ export function BoardView({
       )}
 
       <Rise>
-        <div className="flex gap-1 rounded-full bg-paper p-1 shadow-soft">
-          {(["live", "done", "all"] as const).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              aria-pressed={filter === f}
-              className={cn(
-                "relative flex-1 rounded-full px-3 py-2 text-label font-semibold capitalize",
-                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
-                filter === f ? "text-paper" : "text-muted hover:text-ink",
-              )}
-            >
-              {filter === f && (
-                <motion.span
-                  layoutId={`${filterId}-board-filter`}
-                  transition={LAYOUT_SPRING}
-                  className="absolute inset-0 rounded-full bg-ink"
-                />
-              )}
-              <span className="relative">{f}</span>
-            </button>
-          ))}
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-1 rounded-full bg-paper p-1 shadow-soft">
+            {(["live", "done", "all"] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                aria-pressed={filter === f}
+                className={cn(
+                  "relative flex-1 rounded-full px-3 py-2 text-label font-semibold capitalize",
+                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
+                  filter === f ? "text-paper" : "text-muted hover:text-ink",
+                )}
+              >
+                {filter === f && (
+                  <motion.span
+                    layoutId={`${filterId}-board-filter`}
+                    transition={LAYOUT_SPRING}
+                    className="absolute inset-0 rounded-full bg-ink"
+                  />
+                )}
+                <span className="relative">{f === "live" ? "Pinned" : f}</span>
+              </button>
+            ))}
+          </div>
+
+          {tags.length > 1 && (
+            <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1" role="group" aria-label="Filter by tag">
+              {tags.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={tag === t}
+                  onClick={() => setTag((cur) => (cur === t ? null : t))}
+                  className={cn(
+                    "shrink-0 rounded-full px-3.5 py-1.5 text-label font-semibold transition-colors",
+                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
+                    tag === t ? "bg-ink text-paper" : "bg-paper text-ink shadow-soft hover:bg-ink/5",
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </Rise>
+
+      {/* ------------------------------------------------------- the board */}
+      <Rise>
+        <div className="board-frame">
+          <div className="felt min-h-[22rem] px-3.5 pb-6 pt-7">
+            {!mounted ? null : shown.length === 0 ? (
+              <EmptyBoard filter={filter} filtered={tag !== null} />
+            ) : (
+              <div className="flex gap-3.5">
+                {[left, right].map((col, c) => (
+                  <ul key={c} className={cn("flex min-w-0 flex-1 flex-col gap-6", c === 1 && "pt-4")}>
+                    <AnimatePresence mode="popLayout">
+                      {col.map((card, i) => (
+                        <PinnedCard key={card.key} card={card} index={i * 2 + c} onOpen={onOpen} />
+                      ))}
+                    </AnimatePresence>
+                  </ul>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </Rise>
 
       {mounted && (
-        <section>
-          <AnimatePresence mode="wait" initial={false}>
-            <Stagger key={filter} className="flex flex-col gap-3">
-              {shown.length === 0 ? (
-                <Rise>
-                  <Card className="p-6 text-center">
-                    <Illustration name="board" tone="coral" className="mx-auto mb-2 w-44" />
-                    <p className="text-h2 font-semibold">
-                      {filter === "done" ? "Nothing finished yet" : "Nothing on the board"}
-                    </p>
-                    <p className="mt-1 text-label text-muted">
-                      Add a hand-in or an exam and the Skip Advisor starts weighing it.
-                    </p>
-                  </Card>
-                </Rise>
-              ) : (
-                shown.map((item) => (
-                  <Rise key={item.id} layout>
-                    <WorkCard item={item} now={now} />
-                  </Rise>
-                ))
-              )}
-            </Stagger>
-          </AnimatePresence>
-        </section>
+        <Rise>
+          <CampusTray events={campus} university={university} />
+        </Rise>
       )}
 
       <Rise>
-        <Card>
-          <button
-            type="button"
-            onClick={() => setAdding((a) => !a)}
-            aria-expanded={adding}
-            className="flex w-full items-center justify-between text-left"
-          >
-            <span className="text-caption font-semibold uppercase text-muted">
-              Add a hand-in or exam
-            </span>
-            <motion.span
-              animate={{ rotate: adding ? 45 : 0 }}
-              transition={LAYOUT_SPRING}
-              className="grid size-8 place-items-center rounded-full bg-ink text-h2 leading-none text-paper"
-            >
-              +
-            </motion.span>
-          </button>
-
-          <AnimatePresence initial={false}>
-            {adding && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3, ease: EASE_SOFT }}
-                className="overflow-hidden"
-              >
-                <form action={action} className="mt-5 flex flex-col gap-3">
-                  <div className="flex gap-3">
-                    <select name="kind" defaultValue="assignment" className={cn(field, "appearance-none")}>
-                      <option value="assignment">Hand-in</option>
-                      <option value="exam">Exam</option>
-                    </select>
-                    <select name="moduleId" defaultValue="" className={cn(field, "appearance-none")}>
-                      <option value="">No module</option>
-                      {modules.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <input name="title" required placeholder="Title" className={field} />
-                  <input name="at" type="datetime-local" required className={field} />
-
-                  <div className="flex gap-3">
-                    <input
-                      name="weight"
-                      type="number"
-                      min={0}
-                      max={100}
-                      placeholder="Weight %"
-                      className={field}
-                    />
-                    <input
-                      name="estimatedHours"
-                      type="number"
-                      min={0}
-                      max={200}
-                      step={0.5}
-                      placeholder="Est. hours"
-                      className={field}
-                    />
-                  </div>
-
-                  <PillButton type="submit" size="md" disabled={pending}>
-                    {pending ? "Adding…" : "Add to the board"}
-                  </PillButton>
-                </form>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <AnimatePresence>
-            {state && (
-              <motion.p
-                key={state.message}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.28, ease: EASE_SOFT }}
-                role="status"
-                className={cn("mt-4 text-label", state.ok ? "text-leaf" : "text-coral")}
-              >
-                {state.message}
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </Card>
+        <AddToBoard modules={modules} hasUniversity={university !== null} />
       </Rise>
 
-      <Rise>
-        <p className="text-caption text-muted">
-          Society socials, careers fairs and guest lectures join this board in P6.
-        </p>
-      </Rise>
+      <AnimatePresence>
+        {open && (
+          <CardSheet key={open.key} card={open} hasUniversity={university !== null} onClose={onClose} />
+        )}
+      </AnimatePresence>
     </Stagger>
+  );
+}
+
+/** An empty board is still a board: felt, and one note pinned to it. */
+function EmptyBoard({ filter, filtered }: { filter: Filter; filtered: boolean }) {
+  const text = filtered
+    ? ["Nothing with that tag", "Tap the tag again to see everything."]
+    : filter === "done"
+      ? ["Nothing finished yet", "Submitted hand-ins and past events land here."]
+      : ["Board's clear", "Pin a hand-in, an exam or an event below."];
+
+  return (
+    <div className="grid min-h-[18rem] place-items-center">
+      <motion.div
+        className="card-hang relative w-52"
+        style={{ transformOrigin: "50% 0%", ["--tone" as string]: "var(--color-sun)" }}
+        initial={{ opacity: 0, y: -30, rotate: -10 }}
+        animate={{ opacity: 1, y: 0, rotate: [-10, 1.5, -2.5, -2] }}
+        transition={{ duration: 0.9, times: [0, 0.45, 0.75, 1] }}
+      >
+        <ShapeFrame shape="sticky">
+          <p className="text-body font-bold">{text[0]}</p>
+          <p className="mt-1 text-label text-ink/75">{text[1]}</p>
+        </ShapeFrame>
+        <Pin tone="var(--color-coral)" style={{ left: "calc(50% - 11px)", top: -9 }} />
+      </motion.div>
+    </div>
   );
 }

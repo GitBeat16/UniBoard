@@ -1,3 +1,11 @@
+import {
+  addDays,
+  parseClock,
+  wallTimeToInstant,
+  wallToday,
+  weekdayOf,
+  type WallDate,
+} from "@/lib/time/zone";
 import Groq from "groq-sdk";
 import { extractText, getDocumentProxy } from "unpdf";
 import { z } from "zod";
@@ -300,28 +308,29 @@ export type ExpandedSession = {
  */
 export function expandExtraction(
   extraction: TimetableExtraction,
-  { weeks, from }: { weeks: number; from: Date },
+  { weeks, from, timeZone }: { weeks: number; from: Date; timeZone: string },
 ): ExpandedSession[] {
   const out: ExpandedSession[] = [];
 
-  // Monday of the starting week.
-  const weekStart = new Date(from);
-  weekStart.setHours(0, 0, 0, 0);
-  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  // Monday of the starting week, on the student's wall calendar — not the
+  // server's, which runs in UTC and would put every class 5½ hours late.
+  const today = wallToday(from, timeZone);
+  const weekStart = addDays(today, -((weekdayOf(today) + 6) % 7));
 
   for (const entry of extraction.entries) {
-    const [sh, sm] = entry.startTime.split(":").map(Number);
-    const [eh, em] = entry.endTime.split(":").map(Number);
-    if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) continue;
+    const start = parseClock(entry.startTime);
+    const end = parseClock(entry.endTime);
+    if (!start || !end) continue;
 
     const key = `${entry.code ?? entry.moduleName}|${entry.type}|${entry.startTime}`
       .toLowerCase()
       .replace(/\s+/g, "-");
 
     if (entry.date) {
-      const day = new Date(`${entry.date}T00:00:00`);
-      if (Number.isNaN(day.getTime())) continue;
-      const slot = makeSlot(day, sh, sm, eh, em);
+      const m = entry.date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) continue;
+      const day = { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) };
+      const slot = makeSlot(day, start, end, timeZone);
       if (!slot) continue;
       out.push({
         uid: `vision:${key}:${entry.date}`,
@@ -336,9 +345,8 @@ export function expandExtraction(
     if (entry.weekday === null) continue;
 
     for (let w = 0; w < weeks; w++) {
-      const day = new Date(weekStart);
-      day.setDate(day.getDate() + w * 7 + ((entry.weekday + 6) % 7));
-      const slot = makeSlot(day, sh, sm, eh, em);
+      const day = addDays(weekStart, w * 7 + ((entry.weekday + 6) % 7));
+      const slot = makeSlot(day, start, end, timeZone);
       if (!slot) continue;
       out.push({
         uid: `vision:${key}:w${w}`,
@@ -353,11 +361,14 @@ export function expandExtraction(
   return out.sort((a, b) => a.start.getTime() - b.start.getTime());
 }
 
-function makeSlot(day: Date, sh: number, sm: number, eh: number, em: number) {
-  const start = new Date(day);
-  start.setHours(sh, sm, 0, 0);
-  const end = new Date(day);
-  end.setHours(eh, em, 0, 0);
+function makeSlot(
+  day: WallDate,
+  [sh, sm]: [number, number],
+  [eh, em]: [number, number],
+  timeZone: string,
+) {
+  const start = wallTimeToInstant({ ...day, hour: sh, minute: sm }, timeZone);
+  const end = wallTimeToInstant({ ...day, hour: eh, minute: em }, timeZone);
   // A class that ends before it starts is a misread, not a midnight class.
   if (end.getTime() <= start.getTime()) return null;
   return { start, end };

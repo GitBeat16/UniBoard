@@ -5,6 +5,7 @@ import type { WorkItem } from "@/lib/work/urgency";
 import type { SessionVM } from "@/lib/view-models";
 import type { Budget, Expense } from "@/lib/money/budget";
 import type { Place } from "@/lib/places/overpass";
+import type { BoardEvent } from "@/lib/board/items";
 
 /**
  * Fixtures for the /preview gallery only. Never imported by the app itself —
@@ -199,7 +200,9 @@ export const sampleModules = [
 
 export const sampleProfile: ProfileVM = {
   displayName: "Srushti",
-  universityName: "University of Leeds",
+  universityId: "u1",
+  universityName: "Pune Institute of Computer Technology",
+  universityShort: "PICT",
   threshold: 75,
   attendanceMonitored: false,
   travelMinutes: 35,
@@ -251,4 +254,67 @@ export const samplePlaces: Place[] = [
   { id: "node/2", name: "Chai Point", lat: 18.4582, lng: 73.8514, kind: "cafe", cuisine: "Tea, Snacks", veg: "only", hours: null, distanceM: 160, walkMin: 3 },
   { id: "node/3", name: "Sai Snacks Centre", lat: 18.4561, lng: 73.8521, kind: "fast_food", cuisine: "Indian", veg: null, hours: "Mo-Su 09:00-23:00", distanceM: 290, walkMin: 5 },
   { id: "way/4", name: "Hotel Shreyas", lat: 18.4548, lng: 73.8495, kind: "restaurant", cuisine: "Maharashtrian", veg: "only", hours: null, distanceM: 440, walkMin: 7 },
+];
+
+// ---------------------------------------------------------------- board
+
+export const sampleBoardWork = sampleWork.map((w, i) => ({
+  ...w,
+  // One card in a chosen shape, the rest on their kind's default.
+  shape: i === 1 ? ("sticky" as const) : null,
+}));
+
+export const sampleEvents: BoardEvent[] = [
+  {
+    id: "ev1",
+    title: "Hackathon kickoff",
+    startsAt: hoursFromNow(52),
+    endsAt: hoursFromNow(55),
+    location: "Main auditorium",
+    details: "Teams of four. Pizza after.",
+    tags: ["Hackathon", "Coding"],
+    visibility: "university",
+    mine: false,
+    mark: "save",
+    shape: "polaroid",
+  },
+  {
+    id: "ev2",
+    title: "Buy lab journal",
+    startsAt: hoursFromNow(6),
+    endsAt: null,
+    location: "Stationery shop",
+    details: null,
+    tags: ["Errand"],
+    visibility: "private",
+    mine: true,
+    mark: null,
+    shape: "torn",
+  },
+  {
+    id: "ev3",
+    title: "Guest talk: Rust in production",
+    startsAt: hoursFromNow(28),
+    endsAt: hoursFromNow(29.5),
+    location: "Seminar hall 2",
+    details: null,
+    tags: ["Talk"],
+    visibility: "university",
+    mine: false,
+    mark: null,
+    shape: null,
+  },
+  {
+    id: "ev4",
+    title: "Cultural fest auditions",
+    startsAt: hoursFromNow(75),
+    endsAt: null,
+    location: "Open-air theatre",
+    details: null,
+    tags: ["Fest"],
+    visibility: "university",
+    mine: false,
+    mark: null,
+    shape: null,
+  },
 ];

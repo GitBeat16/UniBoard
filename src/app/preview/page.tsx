@@ -23,7 +23,8 @@ import {
   sampleModules,
   sampleNextSession,
   sampleProfile,
-  sampleWork,
+  sampleBoardWork,
+  sampleEvents,
   sampleSessions,
   sampleStats,
 } from "@/lib/sample-data";
@@ -201,8 +202,17 @@ export default function PreviewPage() {
           />
         </Phone>
 
-        <Phone label="Board — work">
-          <BoardView items={sampleWork} modules={sampleModules} />
+        <Phone label="Board — new account">
+          <BoardView work={[]} modules={[]} />
+        </Phone>
+
+        <Phone label="Board — the soft board">
+          <BoardView
+            work={sampleBoardWork}
+            events={sampleEvents}
+            modules={sampleModules}
+            university={{ name: "Pune Institute of Computer Technology", shortName: "PICT" }}
+          />
         </Phone>
 
         <Phone label="Money — new account">

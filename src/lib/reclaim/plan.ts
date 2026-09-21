@@ -15,7 +15,7 @@ import { urgencyOf, type WorkItem } from "@/lib/work/urgency";
  * Pure: window in, slots out. No clock, no database.
  */
 
-export type SlotKind = "work" | "revision" | "goal" | "break";
+export type SlotKind = "work" | "revision" | "goal" | "break" | "event";
 
 export type Slot = {
   /** Stable within a plan, so React keys and the save action agree. */
@@ -26,9 +26,13 @@ export type Slot = {
   kind: SlotKind;
   /** Shown to the student. Every slot explains itself, like the Advisor. */
   why: string;
-  linkedType: "assignment" | "exam" | "goal" | null;
+  /** "event" slots are fixed — something pinned on the board — never saved as study. */
+  linkedType: "assignment" | "exam" | "goal" | "event" | null;
   linkedId: string | null;
 };
+
+/** Something already on the student's board inside the window. */
+export type BusyBlock = { id: string; title: string; from: Date; to: Date };
 
 export type ReclaimGoal = {
   id: string;
@@ -61,13 +65,72 @@ export function buildReclaimPlan({
   work,
   goals,
   now,
+  busy = [],
 }: {
   from: Date;
   to: Date;
   work: WorkItem[];
   goals: ReclaimGoal[];
   now: Date;
+  /** Events pinned on the board. The plan works around them, never over them. */
+  busy?: BusyBlock[];
 }): Slot[] {
+  if (to.getTime() <= from.getTime()) return [];
+
+  const blocks = mergeBusy(busy, from, to);
+  const queue = buildQueue(work, goals, now);
+  const out: Slot[] = [];
+  let cursor = from;
+
+  // Plan each free stretch in turn, sharing one queue so a task finished
+  // before the event is not scheduled again after it.
+  for (const b of blocks) {
+    if (b.from > cursor) out.push(...planSegment(cursor, b.from, queue));
+    out.push(
+      slotFrom({
+        start: b.from,
+        end: b.to,
+        title: b.title,
+        kind: "event",
+        why: "Pinned on your board — the plan works around it.",
+        linkedType: "event",
+        linkedId: b.id,
+      }),
+    );
+    cursor = b.to;
+  }
+  if (cursor < to) out.push(...planSegment(cursor, to, queue));
+
+  // Ids are positional so React keys and the save action agree.
+  return out.map((slot, index) => ({ ...slot, id: `slot-${index}` }));
+}
+
+/** Clip to the window, sort, and merge overlaps so free stretches are clean. */
+function mergeBusy(busy: BusyBlock[], from: Date, to: Date): BusyBlock[] {
+  const clipped = busy
+    .map((b) => ({
+      ...b,
+      from: new Date(Math.max(b.from.getTime(), from.getTime())),
+      to: new Date(Math.min(b.to.getTime(), to.getTime())),
+    }))
+    .filter((b) => b.to > b.from)
+    .sort((a, b) => a.from.getTime() - b.from.getTime());
+
+  const merged: BusyBlock[] = [];
+  for (const b of clipped) {
+    const last = merged.at(-1);
+    if (last && b.from <= last.to) {
+      if (b.to > last.to) last.to = b.to;
+      last.title = `${last.title} + ${b.title}`;
+    } else {
+      merged.push({ ...b });
+    }
+  }
+  return merged;
+}
+
+/** One free stretch. Consumes tasks from the shared queue as it goes. */
+function planSegment(from: Date, to: Date, queue: Task[]): Slot[] {
   const total = Math.floor((to.getTime() - from.getTime()) / MINUTE);
   if (total <= 0) return [];
 
@@ -86,7 +149,6 @@ export function buildReclaimPlan({
     ];
   }
 
-  const queue = buildQueue(work, goals, now);
   const slots: Slot[] = [];
 
   let cursor = new Date(from);
@@ -253,6 +315,22 @@ function slot({
     endsAt: new Date(start.getTime() + minutes * MINUTE).toISOString(),
     ...rest,
   };
+}
+
+function slotFrom({
+  start,
+  end,
+  ...rest
+}: {
+  start: Date;
+  end: Date;
+  title: string;
+  kind: SlotKind;
+  why: string;
+  linkedType: Slot["linkedType"];
+  linkedId: string | null;
+}): Slot {
+  return { id: "slot", startsAt: start.toISOString(), endsAt: end.toISOString(), ...rest };
 }
 
 export function planMinutes(slots: Slot[]): number {

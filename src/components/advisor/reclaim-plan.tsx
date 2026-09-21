@@ -16,6 +16,7 @@ const KIND: Record<SlotKind, { label: string; chip: string; rail: string }> = {
   revision: { label: "Revision", chip: "bg-iris-soft text-iris", rail: "bg-iris" },
   goal: { label: "Goal", chip: "bg-sky-soft text-sky", rail: "bg-sky" },
   break: { label: "Break", chip: "bg-leaf-soft text-leaf", rail: "bg-leaf" },
+  event: { label: "On your board", chip: "bg-canvas text-ink/80", rail: "bg-felt" },
 };
 
 export function ReclaimPlan({
@@ -32,7 +33,7 @@ export function ReclaimPlan({
   const [pending, startTransition] = useTransition();
 
   const focusMinutes = slots
-    .filter((s) => s.kind !== "break")
+    .filter((s) => s.kind !== "break" && s.kind !== "event")
     .reduce(
       (n, s) => n + (new Date(s.endsAt).getTime() - new Date(s.startsAt).getTime()) / 60_000,
       0,

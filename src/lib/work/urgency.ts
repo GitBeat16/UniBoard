@@ -56,7 +56,7 @@ export function urgencyOf(item: WorkItem, now: Date): Urgency {
 }
 
 /** Live work first, ordered by date; finished and past items sink. */
-export function sortByUrgency(items: WorkItem[], now: Date): WorkItem[] {
+export function sortByUrgency<T extends WorkItem>(items: T[], now: Date): T[] {
   const rank: Record<Urgency, number> = {
     overdue: 0,
     today: 1,

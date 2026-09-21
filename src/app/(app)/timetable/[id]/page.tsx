@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { AdvisorView, type AdvisorPayload } from "@/components/advisor/advisor-view";
 import { moduleAttendance } from "@/lib/attendance/stats";
 import { createClient } from "@/lib/supabase/server";
+import { loadBoardBusy } from "@/lib/board/busy";
 import { fetchAll } from "@/lib/supabase/fetch-all";
 import { asTone } from "@/lib/tones";
 
@@ -54,7 +55,7 @@ export default async function AdvisorPage({
       supabase
         .from("profiles")
         .select(
-          "attendance_monitored, travel_minutes, university_profiles(attendance_threshold)",
+          "attendance_threshold, attendance_monitored, travel_minutes, university_profiles(attendance_threshold)",
         )
         .single(),
     ]);
@@ -64,6 +65,7 @@ export default async function AdvisorPage({
   const statusBySession = new Map((records ?? []).map((r) => [r.session_id, r.status]));
   const threshold = Number(
     module.threshold ??
+      profile?.attendance_threshold ??
       profile?.university_profiles?.attendance_threshold ??
       DEFAULT_THRESHOLD,
   );
@@ -89,7 +91,11 @@ export default async function AdvisorPage({
   // to skip anything.
   const horizon = new Date(now.getTime() + 14 * 24 * 3_600_000).toISOString();
 
-  const [{ data: assignments }, { data: exams }, { data: goals }] = await Promise.all([
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const [{ data: assignments }, { data: exams }, { data: goals }, busy] = await Promise.all([
     supabase
       .from("assignments")
       .select("id, title, due_at, module_id, status, estimated_hours")
@@ -102,6 +108,7 @@ export default async function AdvisorPage({
       .gte("starts_at", now.toISOString())
       .lte("starts_at", horizon),
     supabase.from("goals").select("id, title, kind").eq("active", true),
+    loadBoardBusy(supabase, user!.id, new Date(session.starts_at), new Date(session.ends_at)),
   ]);
 
   const payload: AdvisorPayload = {
@@ -161,6 +168,7 @@ export default async function AdvisorPage({
     travelMinutes: profile?.travel_minutes ?? null,
     attendanceMonitored: profile?.attendance_monitored ?? false,
     nowIso: now.toISOString(),
+    busy: busy.map((b) => ({ id: b.id, title: b.title, from: b.from.toISOString(), to: b.to.toISOString() })),
   };
 
   return <AdvisorView payload={payload} />;

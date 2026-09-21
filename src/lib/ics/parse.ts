@@ -1,4 +1,5 @@
 import ICAL from "ical.js";
+import { isValidTimeZone, wallTimeToInstant } from "@/lib/time/zone";
 
 export type ParsedSession = {
   /** Stable per occurrence, so re-importing updates rather than duplicates. */
@@ -27,13 +28,20 @@ const HARD_ITERATION_CAP = 20_000;
  * supplies the window, which is what makes this testable.
  *
  * Timezone note: TZID references resolve only when the feed ships the matching
- * VTIMEZONE. Feeds that omit it produce floating times, which ical.js reads in
- * the runtime's local zone. That is the common case for university feeds and
- * is the right answer for a student sitting in that timezone.
+ * VTIMEZONE. Feeds that omit it — common for university feeds — produce
+ * "floating" times, which ical.js would read in the *runtime's* zone. On the
+ * server that is UTC, so a 09:00 class in Pune landed at 14:30. Floating
+ * times are instead read in the TZID the feed named, if it is a real IANA
+ * zone, and otherwise in the student's own zone (`timeZone`).
  */
 export function parseIcs(
   text: string,
-  { from, to, maxEvents = 2000 }: { from: Date; to: Date; maxEvents?: number },
+  {
+    from,
+    to,
+    maxEvents = 2000,
+    timeZone,
+  }: { from: Date; to: Date; maxEvents?: number; timeZone: string },
 ): ParseResult {
   const sessions: ParsedSession[] = [];
   let skipped = 0;
@@ -73,8 +81,8 @@ export function parseIcs(
     };
 
     if (!event.isRecurring()) {
-      const start = event.startDate.toJSDate();
-      const end = event.endDate.toJSDate();
+      const start = toInstant(event.startDate, timeZone);
+      const end = toInstant(event.endDate, timeZone);
       if (end >= from && start <= to) {
         sessions.push({ uid: event.uid, ...base, start, end });
       }
@@ -94,7 +102,7 @@ export function parseIcs(
         break;
       }
 
-      const startDate = next.toJSDate();
+      const startDate = toInstant(next, timeZone);
       if (startDate > to) break;
 
       let occurrence;
@@ -105,8 +113,8 @@ export function parseIcs(
         continue;
       }
 
-      const start = occurrence.startDate.toJSDate();
-      const end = occurrence.endDate.toJSDate();
+      const start = toInstant(occurrence.startDate, timeZone);
+      const end = toInstant(occurrence.endDate, timeZone);
       if (end < from) continue;
 
       sessions.push({
@@ -127,4 +135,25 @@ export function parseIcs(
 
   sessions.sort((a, b) => a.start.getTime() - b.start.getTime());
   return { sessions, skipped, truncated };
+}
+
+/**
+ * An ICAL.Time as an instant. UTC and zones the feed defined are exact; a
+ * floating time is a wall-clock time and needs a zone to mean anything.
+ */
+export function toInstant(t: ICAL.Time, fallbackZone: string): Date {
+  if (t.zone && t.zone !== ICAL.Timezone.localTimezone) return t.toJSDate();
+
+  const named = (t as unknown as { timezone?: string }).timezone;
+  const zone = isValidTimeZone(named) ? named : fallbackZone;
+  return wallTimeToInstant(
+    {
+      year: t.year,
+      month: t.month,
+      day: t.day,
+      hour: t.isDate ? 0 : t.hour,
+      minute: t.isDate ? 0 : t.minute,
+    },
+    zone,
+  );
 }

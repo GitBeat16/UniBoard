@@ -25,7 +25,11 @@ export default async function HomePage() {
     { data: assignments },
     { data: exams },
   ] = await Promise.all([
-      supabase.from("profiles").select("display_name").eq("id", user!.id).single(),
+      supabase
+        .from("profiles")
+        .select("display_name, attendance_threshold, university_profiles(attendance_threshold)")
+        .eq("id", user!.id)
+        .single(),
       supabase.from("modules").select("id, name, code, color_token, threshold"),
       fetchAll((from, to) =>
         supabase
@@ -82,7 +86,14 @@ export default async function HomePage() {
         name: m.name,
         code: m.code,
         colorToken: m.color_token,
-        threshold: Number(m.threshold ?? DEFAULT_THRESHOLD),
+        // Same precedence as Timetable, so Home's "needs attention" count and
+        // the Timetable's rings never disagree about the same module.
+        threshold: Number(
+          m.threshold ??
+            profile?.attendance_threshold ??
+            profile?.university_profiles?.attendance_threshold ??
+            DEFAULT_THRESHOLD,
+        ),
         sessions: (sessions ?? [])
           .filter((s) => s.module_id === m.id)
           .map((s) => ({

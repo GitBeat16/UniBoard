@@ -30,13 +30,16 @@ export default async function TimetablePage() {
       ).then((data) => ({ data })),
       supabase
         .from("profiles")
-        .select("university_id, university_profiles(attendance_threshold)")
+        .select("attendance_threshold, university_id, university_profiles(attendance_threshold)")
         .single(),
     ]);
 
   // One shared default: the university profile's threshold, overridable per module.
-  const uniThreshold =
-    profile?.university_profiles?.attendance_threshold ?? DEFAULT_THRESHOLD;
+  const uniThreshold = Number(
+    profile?.attendance_threshold ??
+      profile?.university_profiles?.attendance_threshold ??
+      DEFAULT_THRESHOLD,
+  );
 
   const statusBySession = new Map(
     (records ?? []).map((r) => [r.session_id, r.status]),

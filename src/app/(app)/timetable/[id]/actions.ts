@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Reason, Verdict } from "@/lib/advisor/engine";
 import { buildReclaimPlan } from "@/lib/reclaim/plan";
+import { loadBoardBusy } from "@/lib/board/busy";
 import type { WorkItem } from "@/lib/work/urgency";
 import type { TablesInsert } from "@/lib/supabase/database.types";
 
@@ -82,7 +83,10 @@ export async function saveReclaimPlan(sessionId: string) {
   const now = new Date();
   const horizon = new Date(now.getTime() + 21 * 24 * 3_600_000).toISOString();
 
-  const [{ data: assignments }, { data: exams }, { data: goals }] = await Promise.all([
+  const from = new Date(session.starts_at);
+  const to = new Date(session.ends_at);
+
+  const [{ data: assignments }, { data: exams }, { data: goals }, busy] = await Promise.all([
     supabase
       .from("assignments")
       .select("id, title, due_at, module_id, status, estimated_hours")
@@ -90,6 +94,7 @@ export async function saveReclaimPlan(sessionId: string) {
       .in("status", ["not_started", "in_progress"]),
     supabase.from("exams").select("id, title, starts_at, module_id").lte("starts_at", horizon),
     supabase.from("goals").select("id, title, kind").eq("active", true),
+    loadBoardBusy(supabase, user.id, from, to),
   ]);
 
   const work: WorkItem[] = [
@@ -120,11 +125,12 @@ export async function saveReclaimPlan(sessionId: string) {
   ];
 
   const slots = buildReclaimPlan({
-    from: new Date(session.starts_at),
-    to: new Date(session.ends_at),
+    from,
+    to,
     work,
     goals: (goals ?? []).map((g) => ({ id: g.id, title: g.title, kind: g.kind })),
     now,
+    busy,
   });
 
   if (slots.length === 0) return { ok: false, message: "Nothing to schedule." };
@@ -139,15 +145,19 @@ export async function saveReclaimPlan(sessionId: string) {
     .gte("starts_at", session.starts_at)
     .lte("ends_at", session.ends_at);
 
-  const rows: TablesInsert<"study_blocks">[] = slots.map((s) => ({
-    user_id: user.id,
-    starts_at: s.startsAt,
-    ends_at: s.endsAt,
-    title: s.title,
-    source: "reclaim",
-    linked_type: s.linkedType,
-    linked_id: s.linkedId,
-  }));
+  // Pinned events are already on the board (and in the feed) — they are part
+  // of the plan's shape, not study blocks to save.
+  const rows: TablesInsert<"study_blocks">[] = slots
+    .filter((s) => s.kind !== "event")
+    .map((s) => ({
+      user_id: user.id,
+      starts_at: s.startsAt,
+      ends_at: s.endsAt,
+      title: s.title,
+      source: "reclaim",
+      linked_type: s.linkedType,
+      linked_id: s.linkedId,
+    }));
 
   const { error } = await supabase.from("study_blocks").insert(rows);
   if (error) return { ok: false, message: error.message };

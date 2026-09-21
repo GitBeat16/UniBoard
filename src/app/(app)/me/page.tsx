@@ -15,7 +15,7 @@ export default async function MePage() {
     supabase
       .from("profiles")
       .select(
-        "display_name, attendance_monitored, travel_minutes, calendar_token, university_profiles(name, attendance_threshold)",
+        "display_name, attendance_threshold, attendance_monitored, travel_minutes, calendar_token, university_id, university_profiles(name, short_name, attendance_threshold)",
       )
       .eq("id", user!.id)
       .single(),
@@ -24,9 +24,13 @@ export default async function MePage() {
 
   const vm: ProfileVM = {
     displayName: profile?.display_name ?? "",
+    universityId: profile?.university_id ?? null,
     universityName: profile?.university_profiles?.name ?? "",
+    universityShort: profile?.university_profiles?.short_name ?? null,
     threshold: Number(
-      profile?.university_profiles?.attendance_threshold ?? DEFAULT_THRESHOLD,
+      profile?.attendance_threshold ??
+        profile?.university_profiles?.attendance_threshold ??
+        DEFAULT_THRESHOLD,
     ),
     attendanceMonitored: profile?.attendance_monitored ?? false,
     travelMinutes: profile?.travel_minutes ?? null,

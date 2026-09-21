@@ -7,6 +7,7 @@ import { PillButton } from "@/components/ui/pill-button";
 import { cn } from "@/lib/cn";
 import { EASE_SOFT, LAYOUT_SPRING } from "@/lib/motion";
 import { MAX_FILE, shrinkImage } from "@/lib/upload/shrink-image";
+import { TimeZoneField } from "@/components/ui/time-zone-field";
 import {
   addManualClass,
   importTimetable,
@@ -128,6 +129,7 @@ export function ImportPanel({ compact = false }: { compact?: boolean }) {
         >
           {tab === "link" && (
             <form action={importAction} className="flex flex-col gap-3">
+              <TimeZoneField />
               <input
                 name="url"
                 type="url"
@@ -143,6 +145,7 @@ export function ImportPanel({ compact = false }: { compact?: boolean }) {
 
           {tab === "file" && (
             <form action={importAction} className="flex flex-col gap-3">
+              <TimeZoneField />
               <input
                 name="file"
                 type="file"
@@ -188,6 +191,7 @@ export function ImportPanel({ compact = false }: { compact?: boolean }) {
 
           {tab === "manual" && (
             <form action={manualAction} className="flex flex-col gap-3">
+              <TimeZoneField />
               <input name="name" required placeholder="Module name" className={field} />
 
               <div className="flex gap-3">

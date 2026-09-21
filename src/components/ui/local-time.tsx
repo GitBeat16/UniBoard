@@ -70,5 +70,10 @@ function format(iso: string, mode: "time" | "when" | "dayLong", now: number) {
   if (diffDays === 0) return `Today, ${time}`;
   if (diffDays === 1) return `Tomorrow, ${time}`;
   if (diffDays === -1) return `Yesterday, ${time}`;
-  return `${d.toLocaleDateString(undefined, { weekday: "long" })}, ${time}`;
+  // A bare weekday is only unambiguous inside the coming week: "Monday" for
+  // an exam three weeks out reads as this Monday.
+  if (Math.abs(diffDays) < 7) {
+    return `${d.toLocaleDateString(undefined, { weekday: "long" })}, ${time}`;
+  }
+  return `${d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}, ${time}`;
 }

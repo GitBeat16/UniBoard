@@ -7,7 +7,7 @@ See [PLAN.md](PLAN.md) for the product plan, design system and phase breakdown.
 
 ## Status
 
-**v0.3:** P0–P4, the P5 design pass and Money are done.
+All of PLAN.md's modules are built: P0–P4, the P5 design pass, Money, and the soft board with shared campus events. Reminders stay parked, by decision.
 
 **P0–P4 done:** scaffold, timetable + attendance, the Skip Advisor, the work board, and
 Reclaim (a skipped class becomes a real plan). Motion and Flora were pulled forward from
@@ -181,5 +181,26 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
 - **Nothing about location is tracked.** The campus pin is set once, by the student, from
   a single geolocation fix or a pasted coordinate, and it is the only location UniBoard
   ever sends anywhere.
+- **Never build a wall-clock time on the server.** `setHours()` and `new Date("2026-09-25T14:00")`
+  use the server's zone, which on Vercel is UTC — that put every hand-typed class, photo
+  import and zone-less calendar feed 5½ hours late for a student in Pune. Forms carry the
+  browser's zone in a hidden `tz` field (`<TimeZoneField />`); the server converts with
+  `src/lib/time/zone.ts`. Calendar feeds that name a TZID without defining it are read in
+  that zone.
+- **Universities are shared, thresholds are not.** Students *join* a university record,
+  matched ignoring case, spacing and punctuation (`name_key`, a generated column, with a
+  unique index) or by short name ("pict"). Only its creator can edit it. Each student's
+  attendance threshold lives on their own profile; the university's is just the default.
+- **Board events are the one place students see each other's rows.** A shared event is
+  readable by everyone whose profile points at the same university and writable only by
+  its author (`board_events_*` policies). What a classmate does with it — pin or hide —
+  lives in `board_event_marks`, whose insert policy only accepts events the student can
+  see. Authors are never named. The calendar feed re-checks the university on every fetch
+  because it runs as security definer.
+- **The soft board's look is CSS, not images.** `.felt` in `globals.css` layers two SVG
+  turbulence textures over the felt colour; card shapes are `.card-index`, `.card-sticky`,
+  `.card-polaroid`, `.card-tag` and `.card-torn`, all reading the card's colour from
+  `--tone`. Shapes that use `clip-path` lose `box-shadow`, so the shadow is a
+  `drop-shadow` on the wrapper (`.card-hang`). Text never sits directly on the felt.
 - **Light mode only**, by decision. The design is built on white (PLAN.md §8).
 # UniBoard

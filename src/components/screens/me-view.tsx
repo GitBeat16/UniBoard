@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { FloraSays } from "@/components/flora/flora-says";
 import { setFloraEnabled, useFloraEnabled } from "@/lib/flora/preference";
 import { SketchRing } from "@/components/charts/sketch-ring";
+import { UniversityField } from "@/components/me/university-field";
 import { AnimatedNumber, Rise, Stagger } from "@/components/ui/motion-primitives";
 import { PillButton } from "@/components/ui/pill-button";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -34,7 +35,9 @@ export type GoalVM = {
 
 export type ProfileVM = {
   displayName: string;
+  universityId: string | null;
   universityName: string;
+  universityShort: string | null;
   threshold: number;
   attendanceMonitored: boolean;
   travelMinutes: number | null;
@@ -59,6 +62,8 @@ export function MeView({
     addGoal,
     null,
   );
+  const [threshold, setThreshold] = useState(String(profile.threshold));
+  const [thresholdTouched, setThresholdTouched] = useState(false);
 
   return (
     <Stagger className="flex flex-col gap-8">
@@ -94,11 +99,17 @@ export function MeView({
               placeholder="Your name"
               className={field}
             />
-            <input
-              name="universityName"
-              defaultValue={profile.universityName}
-              placeholder="University"
-              className={field}
+            <UniversityField
+              initial={{
+                id: profile.universityId,
+                name: profile.universityName,
+                shortName: profile.universityShort,
+              }}
+              // A university's usual threshold is a sensible starting point,
+              // but never overrides a number the student already chose.
+              onPick={(hit) => {
+                if (!thresholdTouched) setThreshold(String(hit.threshold));
+              }}
             />
 
             <label className="text-label text-muted">
@@ -110,15 +121,19 @@ export function MeView({
                   min={0}
                   max={100}
                   required
-                  defaultValue={profile.threshold}
+                  value={threshold}
+                  onChange={(e) => {
+                    setThreshold(e.target.value);
+                    setThresholdTouched(true);
+                  }}
                   className={field}
                 />
                 <span className="text-body font-semibold text-ink">%</span>
               </div>
               {/* The whole point of the university profile: no rule is hardcoded. */}
               <span className="mt-1 block text-caption">
-                Different universities set this differently. Yours governs every
-                &ldquo;you can miss N more&rdquo; figure in the app.
+                Yours alone — classmates at the same university keep their own. It
+                governs every &ldquo;you can miss N more&rdquo; figure in the app.
               </span>
             </label>
 

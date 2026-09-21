@@ -196,3 +196,84 @@ describe("determinism", () => {
     expect(buildReclaimPlan(args)).toEqual(buildReclaimPlan(args));
   });
 });
+
+describe("planning around events pinned on the board", () => {
+  const talk = { id: "ev1", title: "Guest talk", from: at(10), to: at(11) };
+
+  it("never schedules anything over a pinned event, and shows it as a fixed slot", () => {
+    const plan = buildReclaimPlan({
+      from: at(9),
+      to: at(12),
+      work: [work()],
+      goals: [],
+      now: NOW,
+      busy: [talk],
+    });
+
+    const event = plan.find((s) => s.kind === "event");
+    expect(event).toMatchObject({ title: "Guest talk", linkedType: "event", linkedId: "ev1" });
+
+    for (const s of plan.filter((x) => x.kind !== "event")) {
+      const overlaps =
+        new Date(s.startsAt) < talk.to && new Date(s.endsAt) > talk.from;
+      expect(overlaps).toBe(false);
+    }
+  });
+
+  it("still covers the whole window, gap-free, around the event", () => {
+    const plan = buildReclaimPlan({
+      from: at(9),
+      to: at(12),
+      work: [work()],
+      goals: [goal],
+      now: NOW,
+      busy: [talk],
+    });
+    for (let i = 1; i < plan.length; i++) {
+      expect(plan[i].startsAt).toBe(plan[i - 1].endsAt);
+    }
+    expect(plan[0].startsAt).toBe(at(9).toISOString());
+  });
+
+  it("does not schedule the same short task both before and after the event", () => {
+    const plan = buildReclaimPlan({
+      from: at(9),
+      to: at(12),
+      work: [work({ estimatedHours: 0.75 })],
+      goals: [],
+      now: NOW,
+      busy: [talk],
+    });
+    expect(plan.filter((s) => s.linkedId === "w1")).toHaveLength(1);
+  });
+
+  it("ignores events outside the window and clips ones that straddle it", () => {
+    const plan = buildReclaimPlan({
+      from: at(9),
+      to: at(10),
+      work: [],
+      goals: [],
+      now: NOW,
+      busy: [
+        { id: "a", title: "Earlier", from: at(7), to: at(8) },
+        { id: "b", title: "Straddles", from: at(9, 30), to: at(11) },
+      ],
+    });
+    const events = plan.filter((s) => s.kind === "event");
+    expect(events.map((e) => e.title)).toEqual(["Straddles"]);
+    expect(events[0].endsAt).toBe(at(10).toISOString());
+  });
+
+  it("keeps ids unique and positional across the whole plan", () => {
+    const plan = buildReclaimPlan({
+      from: at(9),
+      to: at(12),
+      work: [work()],
+      goals: [goal],
+      now: NOW,
+      busy: [talk],
+    });
+    expect(new Set(plan.map((s) => s.id)).size).toBe(plan.length);
+    expect(plan[0].id).toBe("slot-0");
+  });
+});

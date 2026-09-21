@@ -28,6 +28,8 @@ export type AdvisorPayload = {
   travelMinutes: number | null;
   attendanceMonitored: boolean;
   nowIso: string;
+  /** Events pinned on the board inside this class's slot. */
+  busy?: Array<{ id: string; title: string; from: string; to: string }>;
   /** Everything Reclaim needs to fill the freed hours, if they skip. */
   work: WorkItem[];
   goals: ReclaimGoal[];
@@ -88,6 +90,7 @@ export function AdvisorView({ payload }: { payload: AdvisorPayload }) {
         work: payload.work,
         goals: payload.goals,
         now: new Date(payload.nowIso),
+        busy: (payload.busy ?? []).map((b) => ({ ...b, from: new Date(b.from), to: new Date(b.to) })),
       }),
     [payload],
   );

@@ -14,6 +14,7 @@ export type Database = {
     Tables: {
       assignments: {
         Row: {
+          card_shape: string | null
           created_at: string
           due_at: string
           estimated_hours: number | null
@@ -25,6 +26,7 @@ export type Database = {
           weight: number | null
         }
         Insert: {
+          card_shape?: string | null
           created_at?: string
           due_at: string
           estimated_hours?: number | null
@@ -36,6 +38,7 @@ export type Database = {
           weight?: number | null
         }
         Update: {
+          card_shape?: string | null
           created_at?: string
           due_at?: string
           estimated_hours?: number | null
@@ -91,8 +94,40 @@ export type Database = {
           },
         ]
       }
+      board_event_marks: {
+        Row: {
+          created_at: string
+          event_id: string
+          kind: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          kind: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          kind?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_event_marks_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "board_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       board_events: {
         Row: {
+          card_shape: string | null
+          details: string | null
+          visibility: string
           created_at: string
           ends_at: string | null
           id: string
@@ -106,6 +141,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          card_shape?: string | null
+          details?: string | null
+          visibility?: string
           created_at?: string
           ends_at?: string | null
           id?: string
@@ -119,6 +157,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          card_shape?: string | null
+          details?: string | null
+          visibility?: string
           created_at?: string
           ends_at?: string | null
           id?: string
@@ -271,6 +312,7 @@ export type Database = {
       }
       exams: {
         Row: {
+          card_shape: string | null
           id: string
           module_id: string | null
           room: string | null
@@ -280,6 +322,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          card_shape?: string | null
           id?: string
           module_id?: string | null
           room?: string | null
@@ -289,6 +332,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          card_shape?: string | null
           id?: string
           module_id?: string | null
           room?: string | null
@@ -416,6 +460,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          attendance_threshold: number | null
           attendance_monitored: boolean
           calendar_token: string
           campus_label: string | null
@@ -430,6 +475,7 @@ export type Database = {
           university_id: string | null
         }
         Insert: {
+          attendance_threshold?: number | null
           attendance_monitored?: boolean
           calendar_token?: string
           campus_label?: string | null
@@ -444,6 +490,7 @@ export type Database = {
           university_id?: string | null
         }
         Update: {
+          attendance_threshold?: number | null
           attendance_monitored?: boolean
           calendar_token?: string
           campus_label?: string | null
@@ -546,6 +593,9 @@ export type Database = {
       }
       university_profiles: {
         Row: {
+          name_key: string
+          short_key: string | null
+          short_name: string | null
           attendance_threshold: number
           country: string | null
           created_at: string
@@ -558,6 +608,9 @@ export type Database = {
           term_start: string | null
         }
         Insert: {
+          name_key?: never
+          short_key?: never
+          short_name?: string | null
           attendance_threshold?: number
           country?: string | null
           created_at?: string
@@ -570,6 +623,9 @@ export type Database = {
           term_start?: string | null
         }
         Update: {
+          name_key?: never
+          short_key?: never
+          short_name?: string | null
           attendance_threshold?: number
           country?: string | null
           created_at?: string
