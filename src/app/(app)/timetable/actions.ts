@@ -39,7 +39,8 @@ type IncomingSession = {
   type?: Enums<"session_type">;
 };
 
-const MAX_UPLOAD = 5 * 1024 * 1024;
+/** Keep in step with `bodySizeLimit` in next.config.ts and the client's MAX_FILE. */
+const MAX_UPLOAD = 4 * 1024 * 1024;
 
 function isVisionFile(type: string) {
   return type === "application/pdf" || (SUPPORTED_IMAGE_TYPES as readonly string[]).includes(type);
@@ -67,7 +68,7 @@ export async function importTimetable(
     if (file instanceof File && file.size > 0 && isVisionFile(file.type)) {
       // ---- photo or PDF -> Claude reads the grid ----
       if (file.size > MAX_UPLOAD) {
-        return { ok: false, message: "That file is too large (5 MB max)." };
+        return { ok: false, message: "That file is too large (4 MB max)." };
       }
 
       const data = Buffer.from(await file.arrayBuffer()).toString("base64");
@@ -88,7 +89,7 @@ export async function importTimetable(
         text = await fetchIcs(url);
       } else if (file instanceof File && file.size > 0) {
         if (file.size > MAX_UPLOAD) {
-          return { ok: false, message: "That file is too large (5 MB max)." };
+          return { ok: false, message: "That file is too large (4 MB max)." };
         }
         text = await file.text();
       } else if (pasted) {

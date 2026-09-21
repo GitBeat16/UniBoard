@@ -1,9 +1,9 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { getRequestOrigin } from "@/lib/url/server";
 
 export type AuthState = { ok: boolean; message: string } | null;
 
@@ -14,11 +14,9 @@ const credentials = z.object({
   password: z.string().min(8, "Passwords need at least 8 characters."),
 });
 
-async function origin() {
-  const host = (await headers()).get("host");
-  const protocol = host?.startsWith("localhost") ? "http" : "https";
-  return `${protocol}://${host}`;
-}
+// The request's own origin, not the canonical one: signing in on a preview
+// deployment should land you back on that preview.
+const origin = getRequestOrigin;
 
 /**
  * Supabase returns deliberately vague auth errors. Translating them is worth

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { AdvisorView, type AdvisorPayload } from "@/components/advisor/advisor-view";
 import { moduleAttendance } from "@/lib/attendance/stats";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { asTone } from "@/lib/tones";
 
 const DEFAULT_THRESHOLD = 75;
@@ -31,11 +32,25 @@ export default async function AdvisorPage({
         .select("id, name, code, color_token, threshold")
         .eq("id", session.module_id)
         .single(),
-      supabase
-        .from("class_sessions")
-        .select("id, starts_at")
-        .eq("module_id", session.module_id),
-      supabase.from("attendance_records").select("session_id, status"),
+      fetchAll((from, to) =>
+        supabase
+          .from("class_sessions")
+          .select("id, starts_at")
+          .eq("module_id", session.module_id)
+          .order("id")
+          .range(from, to),
+      ).then((data) => ({ data })),
+      // Only this module's records, joined through the session — reading every
+      // record the student has ever made just to use one module's worth hits the
+      // same 1000-row ceiling as everything else.
+      fetchAll((from, to) =>
+        supabase
+          .from("attendance_records")
+          .select("session_id, status, class_sessions!inner(module_id)")
+          .eq("class_sessions.module_id", session.module_id)
+          .order("id")
+          .range(from, to),
+      ).then((data) => ({ data })),
       supabase
         .from("profiles")
         .select(

@@ -41,6 +41,22 @@ curl -s "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/settings" -H "apikey: $NEXT_PUBLIC_SU
 
 `mailer_autoconfirm` should be `true` and `external.anonymous_users` should be `true`.
 
+## Deployment
+
+Production: **https://uni-board-flax.vercel.app** (Vercel project `uni-board`, auto-deploys
+on push to `main`).
+
+- Functions run in **`bom1` (Mumbai)** via `vercel.json`, next to Supabase's `ap-south-1`.
+  Vercel's default is Washington, which puts a round trip across the world in front of
+  every query.
+- `NEXT_PUBLIC_SITE_URL` is the production address. The calendar feed link is built from
+  it, so a link copied on a preview deployment still works after that preview is gone.
+- Supabase → Authentication → URL Configuration must list
+  `https://uni-board-flax.vercel.app/**` (and `http://localhost:3000/**` for dev) under
+  Redirect URLs, or magic links fall back to the Site URL.
+- Uploads: Vercel caps a request at 4.5 MB, so timetable files are capped at 4 MB and
+  photos are shrunk in the browser first (`src/lib/upload/shrink-image.ts`).
+
 ## Setup
 
 ```bash
@@ -77,7 +93,7 @@ src/lib/calendar/        RFC 5545 writer for the outgoing feed + its tests. Pure
 src/lib/ics/vision.ts    reads a timetable out of a photo or PDF via Groq
 src/lib/supabase/        browser / server / proxy clients, generated DB types
 src/proxy.ts             session refresh + route guard (Next 16's `middleware` successor)
-supabase/migrations/     schema, RLS
+supabase/migrations/     schema, RLS — every migration applied to the live project is here, in order
 ```
 
 ## Things worth knowing before you touch the code

@@ -1,6 +1,6 @@
-import { headers } from "next/headers";
 import { MeView, type GoalVM, type ProfileVM } from "@/components/screens/me-view";
 import { createClient } from "@/lib/supabase/server";
+import { getCanonicalOrigin } from "@/lib/url/server";
 
 const DEFAULT_THRESHOLD = 75;
 
@@ -40,10 +40,10 @@ export default async function MePage() {
     progress: Number(g.progress),
   }));
 
-  const host = (await headers()).get("host");
-  const protocol = host?.startsWith("localhost") ? "http" : "https";
+  // Canonical, not this request's host: this link gets pasted into Google
+  // Calendar once and must outlive whichever preview deployment it came from.
   const feedUrl = profile?.calendar_token
-    ? `${protocol}://${host}/api/calendar/${profile.calendar_token}`
+    ? `${await getCanonicalOrigin()}/api/calendar/${profile.calendar_token}`
     : null;
 
   return (

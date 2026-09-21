@@ -1,6 +1,7 @@
 import { TimetableView } from "@/components/screens/timetable-view";
 import { moduleAttendance, type ModuleAttendance } from "@/lib/attendance/stats";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { asTone } from "@/lib/tones";
 import type { SessionVM } from "@/lib/view-models";
 
@@ -12,11 +13,21 @@ export default async function TimetablePage() {
   const [{ data: modules }, { data: sessions }, { data: records }, { data: profile }] =
     await Promise.all([
       supabase.from("modules").select("id, name, code, color_token, threshold"),
-      supabase
-        .from("class_sessions")
-        .select("id, module_id, type, starts_at, ends_at, room, is_assessed, has_submission")
-        .order("starts_at"),
-      supabase.from("attendance_records").select("session_id, status"),
+      fetchAll((from, to) =>
+        supabase
+          .from("class_sessions")
+          .select("id, module_id, type, starts_at, ends_at, room, is_assessed, has_submission")
+          .order("starts_at")
+          .order("id")
+          .range(from, to),
+      ).then((data) => ({ data })),
+      fetchAll((from, to) =>
+        supabase
+          .from("attendance_records")
+          .select("session_id, status")
+          .order("id")
+          .range(from, to),
+      ).then((data) => ({ data })),
       supabase
         .from("profiles")
         .select("university_id, university_profiles(attendance_threshold)")

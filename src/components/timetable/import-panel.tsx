@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { PillButton } from "@/components/ui/pill-button";
 import { cn } from "@/lib/cn";
 import { EASE_SOFT, LAYOUT_SPRING } from "@/lib/motion";
+import { MAX_FILE, shrinkImage } from "@/lib/upload/shrink-image";
 import {
   addManualClass,
   importTimetable,
@@ -18,7 +19,7 @@ const TABS = [
   { id: "manual", label: "By hand" },
 ] as const;
 
-/** .ics is parsed locally; images and PDFs go to Claude to be read. */
+/** .ics is parsed locally; images and PDFs go to the vision model to be read. */
 const UPLOAD_ACCEPT =
   ".ics,text/calendar,image/png,image/jpeg,image/webp,image/gif,application/pdf";
 
@@ -40,6 +41,40 @@ export function ImportPanel({ compact = false }: { compact?: boolean }) {
   );
 
   const state = tab === "manual" ? manualState : importState;
+
+  // Set while a photo is being shrunk, and afterwards to say what happened.
+  const [fileNote, setFileNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const [preparing, setPreparing] = useState(false);
+
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
+    const original = input.files?.[0];
+    setFileNote(null);
+    if (!original) return;
+
+    setPreparing(true);
+    const file = await shrinkImage(original);
+    setPreparing(false);
+
+    if (file !== original) {
+      // Swap the shrunk copy into the input so the form submits it.
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+    }
+
+    if (file.size > MAX_FILE) {
+      setFileNote({
+        ok: false,
+        text: `That file is ${mb(file.size)} — the limit is 4 MB. For a PDF, screenshot the timetable page instead.`,
+      });
+      input.value = "";
+      return;
+    }
+    if (file !== original) {
+      setFileNote({ ok: true, text: `Resized from ${mb(original.size)} to ${mb(file.size)} for upload.` });
+    }
+  }
 
   return (
     <Card className={cn("overflow-hidden", compact && "p-5")}>
@@ -113,8 +148,17 @@ export function ImportPanel({ compact = false }: { compact?: boolean }) {
                 type="file"
                 accept={UPLOAD_ACCEPT}
                 required
+                onChange={onFileChange}
                 className="w-full rounded-tile bg-canvas p-4 text-label file:mr-4 file:rounded-full file:border-0 file:bg-ink file:px-4 file:py-2 file:text-label file:font-semibold file:text-paper"
               />
+              {fileNote && (
+                <p
+                  role="status"
+                  className={cn("px-1 text-label", fileNote.ok ? "text-ink/80" : "text-coral")}
+                >
+                  {fileNote.text}
+                </p>
+              )}
               <p className="px-1 text-caption text-muted">
                 An .ics file, or a photo or PDF of your timetable — those get read
                 for you. A straight-on, uncropped shot works best. A scanned PDF
@@ -136,8 +180,8 @@ export function ImportPanel({ compact = false }: { compact?: boolean }) {
                 weeks
               </label>
 
-              <PillButton type="submit" size="md" disabled={importing}>
-                {importing ? "Reading…" : "Import file"}
+              <PillButton type="submit" size="md" disabled={importing || preparing}>
+                {preparing ? "Preparing…" : importing ? "Reading…" : "Import file"}
               </PillButton>
             </form>
           )}
@@ -213,4 +257,8 @@ export function ImportPanel({ compact = false }: { compact?: boolean }) {
       </AnimatePresence>
     </Card>
   );
+}
+
+function mb(bytes: number) {
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }

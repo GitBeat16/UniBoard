@@ -2,6 +2,7 @@ import { HomeView } from "@/components/screens/home-view";
 import { moduleAttendance } from "@/lib/attendance/stats";
 import { urgencyOf, type WorkItem } from "@/lib/work/urgency";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { asTone } from "@/lib/tones";
 import type { SessionVM } from "@/lib/view-models";
 
@@ -26,11 +27,21 @@ export default async function HomePage() {
   ] = await Promise.all([
       supabase.from("profiles").select("display_name").eq("id", user!.id).single(),
       supabase.from("modules").select("id, name, code, color_token, threshold"),
-      supabase
-        .from("class_sessions")
-        .select("id, module_id, type, starts_at, ends_at, room, is_assessed, has_submission")
-        .order("starts_at"),
-      supabase.from("attendance_records").select("session_id, status"),
+      fetchAll((from, to) =>
+        supabase
+          .from("class_sessions")
+          .select("id, module_id, type, starts_at, ends_at, room, is_assessed, has_submission")
+          .order("starts_at")
+          .order("id")
+          .range(from, to),
+      ).then((data) => ({ data })),
+      fetchAll((from, to) =>
+        supabase
+          .from("attendance_records")
+          .select("session_id, status")
+          .order("id")
+          .range(from, to),
+      ).then((data) => ({ data })),
       supabase.from("assignments").select("id, title, due_at, module_id, status"),
       supabase.from("exams").select("id, title, starts_at, module_id"),
     ]);
@@ -38,7 +49,12 @@ export default async function HomePage() {
   const moduleById = new Map((modules ?? []).map((m) => [m.id, m]));
   const statusBySession = new Map((records ?? []).map((r) => [r.session_id, r.status]));
 
-  const upcoming = (sessions ?? []).find((s) => s.starts_at >= nowIso);
+  // A class that started ten minutes ago is still the one that matters: the
+  // card should say "on now", not skip ahead to this afternoon.
+  const upcoming = (sessions ?? []).find((s) => s.ends_at > nowIso);
+  const isLive = upcoming ? upcoming.starts_at <= nowIso : false;
+  // Flora's "next class in N minutes" is about one that has NOT started yet.
+  const nextToStart = (sessions ?? []).find((s) => s.starts_at >= nowIso);
   const nextSession: SessionVM | null = upcoming
     ? {
         id: upcoming.id,
@@ -89,8 +105,8 @@ export default async function HomePage() {
       title: a.title,
       at: a.due_at,
       moduleId: a.module_id,
-      moduleName: null,
-      tone: "sky" as const,
+      moduleName: a.module_id ? (moduleById.get(a.module_id)?.name ?? null) : null,
+      tone: asTone(a.module_id ? moduleById.get(a.module_id)?.color_token : "sky"),
       status: a.status,
       weight: null,
       estimatedHours: null,
@@ -101,8 +117,8 @@ export default async function HomePage() {
       title: e.title,
       at: e.starts_at,
       moduleId: e.module_id,
-      moduleName: null,
-      tone: "iris" as const,
+      moduleName: e.module_id ? (moduleById.get(e.module_id)?.name ?? null) : null,
+      tone: asTone(e.module_id ? moduleById.get(e.module_id)?.color_token : "iris"),
       status: null,
       weight: null,
       estimatedHours: null,
@@ -112,8 +128,8 @@ export default async function HomePage() {
   const overdueCount = workItems.filter((i) => urgencyOf(i, now) === "overdue").length;
   const dueTodayCount = workItems.filter((i) => urgencyOf(i, now) === "today").length;
 
-  const minutesToNextClass = upcoming
-    ? Math.round((new Date(upcoming.starts_at).getTime() - now.getTime()) / 60_000)
+  const minutesToNextClass = nextToStart
+    ? Math.round((new Date(nextToStart.starts_at).getTime() - now.getTime()) / 60_000)
     : null;
 
   return (
@@ -121,6 +137,7 @@ export default async function HomePage() {
       displayName={profile?.display_name ?? "there"}
       todayIso={nowIso}
       nextSession={nextSession}
+      nextSessionLive={isLive}
       atRisk={atRisk}
       modulesBelow={modulesBelow}
       overdueCount={overdueCount}

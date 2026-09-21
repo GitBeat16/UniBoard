@@ -26,6 +26,7 @@ export function HomeView({
   displayName,
   todayIso,
   nextSession,
+  nextSessionLive = false,
   atRisk = 0,
   modulesBelow = 0,
   overdueCount = 0,
@@ -35,6 +36,8 @@ export function HomeView({
   displayName: string;
   todayIso: string;
   nextSession: SessionVM | null;
+  /** Started and not yet over. Decided by the page, which already has the clock. */
+  nextSessionLive?: boolean;
   atRisk?: number;
   modulesBelow?: number;
   overdueCount?: number;
@@ -71,8 +74,14 @@ export function HomeView({
 
       <Rise>
         <Card className="relative overflow-hidden">
-          <p className="text-caption font-semibold uppercase text-muted">
-            Next class
+          <p className="flex items-center gap-2 text-caption font-semibold uppercase text-muted">
+            {nextSessionLive && (
+              <span className="relative flex size-2" aria-hidden="true">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-leaf opacity-60 motion-reduce:animate-none" />
+                <span className="relative inline-flex size-2 rounded-full bg-leaf" />
+              </span>
+            )}
+            {nextSessionLive ? "On now" : "Next class"}
           </p>
 
           {nextSession ? (
@@ -90,7 +99,13 @@ export function HomeView({
                     {nextSession.moduleName}
                   </h2>
                   <p className="mt-1 text-body text-muted tnum">
-                    <LocalTime iso={nextSession.startsAt} mode="when" />
+                    {nextSessionLive ? (
+                      <>
+                        until <LocalTime iso={nextSession.endsAt} mode="time" />
+                      </>
+                    ) : (
+                      <LocalTime iso={nextSession.startsAt} mode="when" />
+                    )}
                     {nextSession.room ? ` · ${nextSession.room}` : ""}
                   </p>
                 </div>
