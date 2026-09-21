@@ -5,7 +5,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { Card } from "@/components/ui/card";
 import { FloraSays } from "@/components/flora/flora-says";
 import { setFloraEnabled, useFloraEnabled } from "@/lib/flora/preference";
-import { AnimatedNumber, ProgressRing, Rise, Stagger } from "@/components/ui/motion-primitives";
+import { SketchRing } from "@/components/charts/sketch-ring";
+import { AnimatedNumber, Rise, Stagger } from "@/components/ui/motion-primitives";
 import { PillButton } from "@/components/ui/pill-button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { cn } from "@/lib/cn";
@@ -366,11 +367,11 @@ function GoalCard({ goal }: { goal: GoalVM }) {
 
   return (
     <Card className={cn("flex items-center gap-4 p-4", pending && "opacity-60")}>
-      <ProgressRing value={goal.progress} size={64} stroke={6} tone="var(--color-iris)">
+      <SketchRing value={goal.progress} seedKey={goal.id} size={64} thickness={8} tone="var(--color-iris)">
         <span className="text-caption font-bold tnum">
           <AnimatedNumber value={goal.progress} suffix="%" />
         </span>
-      </ProgressRing>
+      </SketchRing>
 
       <div className="min-w-0 flex-1">
         <h3 className="truncate text-body font-semibold">{goal.title}</h3>

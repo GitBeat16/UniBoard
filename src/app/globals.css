@@ -33,6 +33,14 @@
   --color-leaf-soft: #ecf7ed;
   --color-iris-soft: #eeecfa;
 
+  /* --- the soft board ---------------------------------------------------
+     Maroon felt, used only on the Board so the rest of the app stays on
+     white. Text never sits on it directly (ink on felt is ~2:1) — it goes
+     on a paper strip or pill. */
+  --color-felt: #6e1f2b;
+  --color-felt-deep: #4a121c;
+  --color-felt-light: #8a3441;
+
   /* --- shape ------------------------------------------------------------ */
   --radius-card: 32px;
   --radius-tile: 24px;

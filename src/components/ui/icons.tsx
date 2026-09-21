@@ -1,102 +1,312 @@
 /**
- * Placeholder stroke icon set — 2px, rounded caps, single family.
+ * UniBoard's hand-drawn icon set.
  *
- * P5 (design pass) replaces these with the real hand-drawn set with visible
- * wobble and hatching. Until then the rule that matters is already in force:
- * ONE family, no mixing. Dropping Lucide or Feather in alongside hand-drawn
- * icons is instantly visible and very hard to unsee.
+ * Drawn to the Paper & Doodle rules: 2px ink, round caps, and deliberate
+ * imperfection — no outline closes exactly (the pen overshoots or leaves a
+ * hair gap), straight lines carry a slight bow, circles are a touch egg-shaped.
+ * Hatching is a second, thinner, faded stroke group, never a fill, so every
+ * icon still works in one colour and inherits `currentColor` everywhere
+ * (ink on paper, paper on the black pill).
+ *
+ * The path data is authored in one place and previewed as a contact sheet
+ * before it lands here. Do not mix in Lucide or Feather: a split icon family
+ * is instantly visible and very hard to unsee.
  */
 type IconProps = React.SVGProps<SVGSVGElement>;
 
-function Svg({ children, ...props }: IconProps) {
+function Svg({
+  strokes,
+  hatch,
+  ...props
+}: IconProps & { strokes: string[]; hatch?: string[] }) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
       {...props}
     >
-      {children}
+      <g strokeWidth={2}>
+        {strokes.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </g>
+      {hatch && hatch.length > 0 && (
+        <g strokeWidth={1.15} opacity={0.55}>
+          {hatch.map((d) => (
+            <path key={d} d={d} />
+          ))}
+        </g>
+      )}
     </svg>
   );
 }
 
 export const IconHome = (p: IconProps) => (
-  <Svg {...p}>
-    <path d="M3.4 10.6 12 3.6l8.6 7" />
-    <path d="M5.4 10v9.2c0 .6.4 1 1 1h11.2c.6 0 1-.4 1-1V10" />
-  </Svg>
+  <Svg
+    {...p}
+    strokes={[
+      "M3.1 11.3C6 8.7 9 6.1 12.1 3.5C15 6 18 8.5 21 11.1",
+      "M5.7 9.8C5.4 13.2 5.5 16.7 5.8 20.2C9.9 20.5 14.2 20.4 18.3 20.1C18.6 16.7 18.5 13.2 18.2 9.7",
+      "M10.1 20.1C10 18.3 10.1 16.4 10.3 14.7C11.5 14.4 12.6 14.4 13.8 14.6C14 16.4 14 18.3 13.8 20.1",
+    ]}
+    hatch={[
+      "M10.6 17.6 12.6 15.1",
+      "M10.7 19.6 13.4 16.4",
+    ]}
+  />
 );
 
 export const IconTimetable = (p: IconProps) => (
-  <Svg {...p}>
-    <rect x="3.3" y="4.6" width="17.4" height="15.8" rx="3" />
-    <path d="M3.6 9.4h16.8M8.4 3.4v3.4M15.6 3.4v3.4" />
-  </Svg>
+  <Svg
+    {...p}
+    strokes={[
+      "M4.4 5.4C9.6 5 14.8 5 19.9 5.3C20.3 10.2 20.2 15.1 19.9 20.1C14.7 20.5 9.4 20.4 4.2 20.2C3.8 15.3 3.8 10.4 4.1 5.8",
+      "M4.1 9.7C9.4 9.4 14.7 9.5 20 9.8",
+      "M8.2 3.1C8.4 4.4 8.3 5.8 8.4 7.1",
+      "M15.7 3.1C15.8 4.4 15.6 5.7 15.8 7",
+      "M8.6 13.9h.01",
+      "M12.1 13.8h.01",
+      "M15.6 13.9h.01",
+      "M8.6 17.1h.01",
+      "M12.1 17.2h.01",
+    ]}
+    hatch={[
+      "M5.4 9.3 7.4 6.2",
+      "M9.4 9.3 11.6 6",
+      "M13.4 9.3 15.6 6",
+      "M17.4 9.3 19.2 6.6",
+    ]}
+  />
 );
 
 export const IconBoard = (p: IconProps) => (
-  <Svg {...p}>
-    <path d="M12 13.4v7.2" />
-    <path d="M8.2 3.6h7.6l-1 5.1 2.6 2.3c.5.5.2 1.4-.5 1.4H7.1c-.7 0-1-.9-.5-1.4l2.6-2.3-1-5.1Z" />
-  </Svg>
+  <Svg
+    {...p}
+    strokes={[
+      "M8.8 3.5C11 3.2 13.1 3.3 15.3 3.5",
+      "M9.8 3.7C9.9 5.4 9.7 7.2 9.4 8.9C8 9.6 6.8 10.6 6.2 12.1C10.1 12.4 13.9 12.4 17.8 12.1C17.2 10.6 16 9.6 14.6 8.9C14.3 7.2 14.2 5.4 14.3 3.7",
+      "M12 12.5C12.1 15.2 11.9 17.9 12.1 20.7",
+    ]}
+    hatch={[
+      "M10.4 7.6 12.3 4.3",
+      "M11.9 8.6 13.8 5.4",
+    ]}
+  />
 );
 
 export const IconMoney = (p: IconProps) => (
-  <Svg {...p}>
-    <rect x="3.2" y="6.2" width="17.6" height="12.4" rx="3" />
-    <path d="M3.4 10.6h17.2" />
-    <circle cx="16.8" cy="15" r="1.2" />
-  </Svg>
+  <Svg
+    {...p}
+    strokes={[
+      "M3.7 7.5C9 7 15 7 20.3 7.3C20.6 11.2 20.6 15.2 20.2 19.1C14.8 19.5 9.1 19.4 3.7 19.1C3.3 15.2 3.3 11.4 3.5 7.9",
+      "M4.2 7.2C8.4 5.9 12.6 4.7 16.8 3.8C17.3 4.9 17.6 6 17.8 7.1",
+      "M20.2 11.4C18.3 11.2 16.4 11.3 14.7 11.6C14.5 12.8 14.5 14 14.7 15.1C16.5 15.4 18.4 15.4 20.2 15.2",
+      "M17.3 13.4h.01",
+    ]}
+    hatch={[
+      "M5.4 17.6 7.6 14.6",
+      "M7.9 17.7 9.9 15",
+    ]}
+  />
 );
 
 export const IconMe = (p: IconProps) => (
-  <Svg {...p}>
-    <circle cx="12" cy="8.2" r="3.7" />
-    <path d="M4.8 20.3c.6-3.9 3.6-6.1 7.2-6.1s6.6 2.2 7.2 6.1" />
-  </Svg>
+  <Svg
+    {...p}
+    strokes={[
+      "M12.4 4.2C14.5 4.2 16.1 6 16 8.1C15.9 10.3 14.2 11.9 12 11.9C9.8 11.9 8.1 10.2 8.2 8C8.2 5.9 9.9 4.2 12 4.1",
+      "M4.6 20.4C5 16.7 8 14.3 12 14.3C16 14.3 19 16.6 19.5 20.3",
+    ]}
+    hatch={[
+      "M9.2 19.4 11 16.6",
+      "M12 19.5 14 16.5",
+      "M14.9 19.5 16.4 17.2",
+    ]}
+  />
 );
 
 export const IconAttendance = (p: IconProps) => (
-  <Svg {...p}>
-    <circle cx="12" cy="12" r="8.4" />
-    <path d="M12 3.6v8.4l6 4.1" />
-  </Svg>
+  <Svg
+    {...p}
+    strokes={[
+      "M12.6 3.5C17.2 3.6 20.6 7.3 20.5 12C20.4 16.7 16.7 20.5 12 20.4C7.3 20.4 3.5 16.7 3.6 11.9C3.6 7.3 7.3 3.6 11.9 3.5",
+      "M12 7.2C12.1 8.8 12 10.4 12.1 12.1C13.4 12.9 14.6 13.7 15.9 14.6",
+    ]}
+    hatch={[
+      "M5.9 14.9 8 16.9",
+      "M6.9 12.6 9.6 15.1",
+    ]}
+  />
 );
 
 export const IconAdvisor = (p: IconProps) => (
-  <Svg {...p}>
-    <path d="M12 3.5v5.2M12 15.4v5.1" />
-    <path d="m5.6 7.2 3.7 2.2M14.7 14.6l3.7 2.2" />
-    <path d="m18.4 7.2-3.7 2.2M9.3 14.6l-3.7 2.2" />
-    <circle cx="12" cy="12" r="2.6" />
-  </Svg>
+  <Svg
+    {...p}
+    strokes={[
+      "M12 3.2C12.1 9 11.9 14.9 12.1 20.7",
+      "M12.2 5.1C14.9 5 17.4 5 19.6 5.2C20.4 6 21 6.6 21.4 7.4C20.8 8.2 20.2 8.9 19.5 9.6C17 9.8 14.6 9.7 12.2 9.6",
+      "M11.8 11.4C9.3 11.3 6.9 11.3 4.6 11.5C3.8 12.3 3.2 13 2.7 13.7C3.3 14.5 3.9 15.2 4.6 15.9C7 16.1 9.4 16 11.8 15.9",
+      "M8.4 20.8C10.8 20.5 13.3 20.5 15.7 20.8",
+    ]}
+    hatch={[
+      "M5.4 15.4 7.8 11.9",
+      "M8.3 15.4 10.6 11.9",
+    ]}
+  />
 );
 
 export const IconAssignment = (p: IconProps) => (
-  <Svg {...p}>
-    <path d="M6.2 3.7h8.3l4.3 4.4v12.2H6.2z" />
-    <path d="M14.2 3.8v4.4h4.4" />
-    <path d="M9.2 13.2h5.6M9.2 16.6h4" />
-  </Svg>
+  <Svg
+    {...p}
+    strokes={[
+      "M6.1 3.6C8.9 3.4 11.7 3.4 14.6 3.6C16.1 5 17.5 6.5 18.9 8C19 12.2 19.1 16.3 18.8 20.4C14.6 20.7 10.3 20.6 6.1 20.4C5.8 14.8 5.8 9.2 5.9 4",
+      "M14.4 3.8C14.3 5.3 14.4 6.8 14.5 8.3C16 8.4 17.4 8.3 18.8 8.2",
+      "M9 12.6C11 12.4 13.2 12.5 15.3 12.7",
+      "M9 16.2C10.6 16.1 12.2 16.1 13.8 16.3",
+    ]}
+    hatch={[
+      "M15 7.8 16.4 6.3",
+    ]}
+  />
 );
 
 export const IconGoal = (p: IconProps) => (
-  <Svg {...p}>
-    <circle cx="12" cy="12" r="8.3" />
-    <circle cx="12" cy="12" r="4.4" />
-    <circle cx="12" cy="12" r="1" />
-  </Svg>
+  <Svg
+    {...p}
+    strokes={[
+      "M12.7 3.7C17.1 3.9 20.4 7.6 20.3 12C20.2 16.6 16.6 20.3 12 20.3C7.4 20.3 3.7 16.6 3.7 12C3.7 7.5 7.4 3.8 11.9 3.7",
+      "M12.4 7.6C14.8 7.7 16.4 9.7 16.3 12C16.2 14.4 14.3 16.3 12 16.3C9.6 16.3 7.7 14.4 7.7 12C7.7 9.7 9.6 7.7 11.9 7.6",
+      "M12 12h.01",
+    ]}
+    hatch={[
+      "M9.6 13.6 11.4 10",
+      "M11.3 15.2 13.7 10.5",
+      "M13.3 15.5 15.1 12",
+    ]}
+  />
 );
 
 export const IconFood = (p: IconProps) => (
-  <Svg {...p}>
-    <path d="M7.1 3.6v7.2M4.7 3.6v4.2c0 1.4.9 2.5 2.4 2.7M9.5 3.6v4.2c0 1.4-.9 2.5-2.4 2.7" />
-    <path d="M7.1 10.8v9.6" />
-    <path d="M16.9 20.4v-6.6c-1.7 0-2.8-1.1-2.8-3 0-3.7 1.5-6.8 2.9-6.8s2.8 3.1 2.8 6.8c0 1.9-1.1 3-2.8 3" />
-  </Svg>
+  <Svg
+    {...p}
+    strokes={[
+      "M7.1 3.6C7.2 6 7 8.4 7.1 10.8",
+      "M4.7 3.7C4.6 5 4.6 6.4 4.7 7.8C4.8 9.3 5.7 10.3 7.1 10.6",
+      "M9.5 3.7C9.6 5 9.6 6.4 9.5 7.8C9.4 9.3 8.5 10.3 7.1 10.6",
+      "M7.1 10.8C7.2 14 7 17.3 7.2 20.5",
+      "M16.9 20.5C17 18.3 16.8 16 16.9 13.8C15.2 13.8 14.1 12.7 14.1 10.8C14.1 7.1 15.6 3.9 17 3.9C18.4 3.9 19.8 7.1 19.8 10.8C19.8 12.7 18.7 13.8 16.9 13.8",
+    ]}
+    hatch={[
+      "M15.2 11.8 17.4 8.5",
+      "M16.6 12.9 18.8 9.6",
+    ]}
+  />
+);
+
+export const IconLocation = (p: IconProps) => (
+  <Svg
+    {...p}
+    strokes={[
+      "M12.1 20.8C9.3 17.8 5.9 13.9 5.9 10.2C5.9 6.6 8.7 3.6 12.1 3.6C15.5 3.6 18.2 6.6 18.1 10.1C18 13.9 14.8 17.6 11.8 20.4",
+      "M12.3 7.8C13.6 7.9 14.4 9 14.4 10.2C14.3 11.4 13.3 12.4 12.1 12.4C10.8 12.4 9.8 11.4 9.9 10.1C9.9 8.9 10.9 7.8 12.1 7.8",
+    ]}
+    hatch={[
+      "M8.4 14.9 10.3 12.6",
+      "M10.6 17.6 13.4 14.1",
+    ]}
+  />
+);
+
+export const IconTag = (p: IconProps) => (
+  <Svg
+    {...p}
+    strokes={[
+      "M3.6 12.4C3.7 9.5 3.6 6.6 3.8 3.8C6.6 3.6 9.5 3.7 12.3 3.6C15.2 6.5 18.1 9.4 20.9 12.3C18.1 15.2 15.2 18.1 12.3 20.9C9.4 18.1 6.5 15.2 3.8 12.6",
+      "M8.3 6.9C9.1 7 9.6 7.6 9.5 8.3C9.5 9 8.9 9.6 8.2 9.5C7.5 9.5 7 8.9 7 8.2C7.1 7.5 7.6 6.9 8.3 6.9",
+    ]}
+    hatch={[
+      "M11.4 16.8 16 12.2",
+      "M13.3 18.1 17.4 14",
+    ]}
+  />
+);
+
+export const IconPlus = (p: IconProps) => (
+  <Svg
+    {...p}
+    strokes={[
+      "M12 5.1C12.1 9.7 11.9 14.3 12.1 18.9",
+      "M5.1 12.1C9.7 11.9 14.3 12.1 18.9 11.9",
+    ]}
+  />
+);
+
+export const IconCheck = (p: IconProps) => (
+  <Svg
+    {...p}
+    strokes={[
+      "M4.9 12.7C6.5 14.3 8.1 15.9 9.7 17.6C12.8 13.5 15.9 9.4 19.3 5.5",
+    ]}
+  />
+);
+
+export const IconClose = (p: IconProps) => (
+  <Svg
+    {...p}
+    strokes={[
+      "M6.2 6.1C10 9.9 14 13.9 17.9 17.9",
+      "M17.8 6.2C14 10 10.1 13.9 6.1 17.8",
+    ]}
+  />
+);
+
+export const IconBookmark = (p: IconProps) => (
+  <Svg
+    {...p}
+    strokes={[
+      "M7 3.8C10.3 3.6 13.7 3.6 17 3.8C17.2 9.4 17.2 15 17 20.6C15.3 19 13.6 17.4 12 15.9C10.3 17.5 8.7 19 7 20.6C6.8 15 6.8 9.4 6.9 4.2",
+    ]}
+    hatch={[
+      "M8.6 9.6 11 6",
+      "M10.8 10.8 14 6",
+      "M13.3 11.1 15.5 7.8",
+    ]}
+  />
+);
+
+export const IconUsers = (p: IconProps) => (
+  <Svg
+    {...p}
+    strokes={[
+      "M9.2 5C10.9 5 12.2 6.4 12.1 8.1C12.1 9.8 10.7 11.1 9 11.1C7.3 11.1 6 9.7 6.1 8C6.1 6.3 7.5 5 9.3 5",
+      "M3.3 19.4C3.6 16.3 6 14.2 9.1 14.2C12.2 14.2 14.6 16.3 14.9 19.4",
+      "M15.3 5.4C16.8 5.5 17.9 6.7 17.9 8.2C17.8 9.6 16.8 10.7 15.4 10.8",
+      "M17 14.4C19.1 14.9 20.5 16.7 20.7 19.3",
+    ]}
+  />
+);
+
+export const IconWalk = (p: IconProps) => (
+  <Svg
+    {...p}
+    strokes={[
+      "M13.4 3.4C14.3 3.4 14.9 4.1 14.9 4.9C14.9 5.7 14.2 6.4 13.4 6.4C12.6 6.4 11.9 5.7 12 4.9C12 4.1 12.7 3.4 13.5 3.4",
+      "M12.6 8.3C12.2 10.5 11.8 12.7 11.3 14.8C10.3 16.6 9.2 18.5 8 20.5",
+      "M11.4 14.9C12.6 16.1 13.7 17.3 14.6 18.6C14.9 19.2 15.1 19.9 15.3 20.6",
+      "M8.6 12.2C9.2 10.6 10.4 9.1 12.5 8.3C13.8 9.6 14.6 11.2 16.9 11.8",
+    ]}
+  />
+);
+
+export const IconSparkle = (p: IconProps) => (
+  <Svg
+    {...p}
+    strokes={[
+      "M12 3.4C12.7 7.6 13.8 10.4 20.6 12C13.8 13.6 12.7 16.4 12 20.6C11.3 16.4 10.2 13.6 3.4 12C10.2 10.4 11.3 7.6 12 3.6",
+    ]}
+  />
 );

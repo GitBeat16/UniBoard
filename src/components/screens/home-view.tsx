@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import { Illustration } from "@/components/ui/illustration";
 import { FloraSays } from "@/components/flora/flora-says";
 import { LocalTime } from "@/components/ui/local-time";
 import {
@@ -132,7 +133,8 @@ export function HomeView({
             </>
           ) : (
             <>
-              <p className="mt-3 text-h2 font-semibold">Nothing here yet</p>
+              <Illustration name="timetable" tone="sky" className="mx-auto mt-2 w-44" />
+              <p className="mt-1 text-h2 font-semibold">Nothing here yet</p>
               <p className="mt-2 text-body text-muted">
                 Import your timetable and UniBoard can start tracking attendance
                 and calling go-or-skip.

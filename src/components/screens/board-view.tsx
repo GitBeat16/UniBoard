@@ -3,6 +3,7 @@
 import { useActionState, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Card } from "@/components/ui/card";
+import { Illustration } from "@/components/ui/illustration";
 import { FloraSays } from "@/components/flora/flora-says";
 import { AnimatedNumber, Rise, Stagger } from "@/components/ui/motion-primitives";
 import { PillButton } from "@/components/ui/pill-button";
@@ -135,6 +136,7 @@ export function BoardView({
               {shown.length === 0 ? (
                 <Rise>
                   <Card className="p-6 text-center">
+                    <Illustration name="board" tone="coral" className="mx-auto mb-2 w-44" />
                     <p className="text-h2 font-semibold">
                       {filter === "done" ? "Nothing finished yet" : "Nothing on the board"}
                     </p>

@@ -2,6 +2,10 @@ import { notFound } from "next/navigation";
 import { BlobBackground } from "@/components/ui/blob-background";
 import { BottomNav } from "@/components/ui/bottom-nav";
 import { PhasePlaceholder } from "@/components/ui/phase-placeholder";
+import * as Icons from "@/components/ui/icons";
+import { Illustration, type IllustrationName } from "@/components/ui/illustration";
+import { SketchRing } from "@/components/charts/sketch-ring";
+import { SketchBar } from "@/components/charts/sketch-bar";
 import { HomeView } from "@/components/screens/home-view";
 import { TimetableView } from "@/components/screens/timetable-view";
 import { AdvisorView } from "@/components/advisor/advisor-view";
@@ -60,10 +64,10 @@ export default function PreviewPage() {
         <p className="text-caption font-semibold uppercase text-coral">
           Design preview · no live data
         </p>
-        <h1 className="mt-2 text-h1 font-bold">UniBoard screens — P0</h1>
+        <h1 className="mt-2 text-h1 font-bold">UniBoard screens</h1>
         <p className="mt-2 max-w-2xl text-body text-muted">
           The real components with sample props. Everything here is built except
-          Money, which stays an honest placeholder until P6.
+          Money, which stays an honest placeholder until v0.3.
         </p>
       </header>
 
@@ -81,6 +85,77 @@ export default function PreviewPage() {
               </div>
               <figcaption className="text-caption font-semibold uppercase text-muted">
                 {mood}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-10">
+        <h2 className="text-caption font-semibold uppercase text-muted">
+          Icons — hand-drawn set, on paper and on the ink pill
+        </h2>
+        <div className="mt-4 flex flex-wrap gap-4">
+          {Object.entries(Icons).map(([name, Icon]) => (
+            <figure
+              key={name}
+              className="m-0 flex w-24 flex-col items-center gap-2 rounded-tile bg-paper p-3 shadow-soft"
+            >
+              <span className="grid size-12 place-items-center rounded-full bg-sky-soft">
+                <Icon className="size-7" />
+              </span>
+              <span className="grid size-8 place-items-center rounded-full bg-ink text-paper">
+                <Icon className="size-5" />
+              </span>
+              <figcaption className="text-caption text-muted">{name.replace("Icon", "")}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-10">
+        <h2 className="text-caption font-semibold uppercase text-muted">
+          Sketched charts — rough.js, seeded per thing drawn
+        </h2>
+        <div className="mt-4 flex flex-wrap items-center gap-6">
+          {(
+            [
+              [92, "leaf"],
+              [78, "sun"],
+              [61, "coral"],
+              [100, "leaf"],
+              [0, "muted"],
+            ] as const
+          ).map(([v, t]) => (
+            <div key={v} className="rounded-card bg-paper p-4 shadow-soft">
+              <SketchRing value={v} seedKey={`preview-${v}`} tone={`var(--color-${t})`}>
+                <span className="text-label font-bold tnum">{v}%</span>
+              </SketchRing>
+            </div>
+          ))}
+          <div className="w-72 rounded-card bg-paper p-5 shadow-soft">
+            <SketchBar value={64} seedKey="preview-bar" tone="var(--color-sky)" />
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-10">
+        <h2 className="text-caption font-semibold uppercase text-muted">
+          Empty states
+        </h2>
+        <div className="mt-4 flex flex-wrap gap-4">
+          {(
+            [
+              ["timetable", "sky"],
+              ["board", "coral"],
+              ["money", "sun"],
+              ["places", "leaf"],
+            ] as Array<[IllustrationName, "sky" | "coral" | "sun" | "leaf"]>
+          ).map(([name, tone]) => (
+            <figure key={name} className="m-0 w-60 rounded-card bg-paper p-4 shadow-soft">
+              <Illustration name={name} tone={tone} />
+              <figcaption className="text-center text-caption font-semibold uppercase text-muted">
+                {name}
               </figcaption>
             </figure>
           ))}
@@ -126,11 +201,12 @@ export default function PreviewPage() {
           <BoardView items={sampleWork} modules={sampleModules} />
         </Phone>
 
-        <Phone label="Money — P6">
+        <Phone label="Money — v0.3">
           <PhasePlaceholder
             light="Food and"
             bold="budget"
-            phase="Coming in P6"
+            phase="Coming in v0.3"
+            illustration="money"
             what="Places ranked by walk-time from your next class, filtered to what is left in today's budget. Plus quick spend logging."
           />
         </Phone>

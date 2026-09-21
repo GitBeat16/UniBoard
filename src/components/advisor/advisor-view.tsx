@@ -150,7 +150,7 @@ export function AdvisorView({ payload }: { payload: AdvisorPayload }) {
           <p className="mt-1 text-body text-muted">{copy.sub}</p>
 
           <div className="mt-6">
-            <VerdictGauge score={result.score} tone={tone.hex} />
+            <VerdictGauge score={result.score} tone={tone.hex} seedKey={payload.session.id} />
           </div>
 
           {result.guardrail && (

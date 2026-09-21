@@ -1,5 +1,6 @@
 "use client";
 
+import { Illustration } from "@/components/ui/illustration";
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Card } from "@/components/ui/card";
@@ -103,6 +104,9 @@ export function TimetableView({
 
       {empty ? (
         <Stagger>
+          <Rise>
+            <Illustration name="timetable" tone="sky" className="mx-auto -mb-2 w-56" />
+          </Rise>
           <Rise>
             <ImportPanel />
           </Rise>

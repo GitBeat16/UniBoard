@@ -9,6 +9,21 @@ campus events · **1.0.0** when every module in PLAN.md is live.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-21
+
+The design pass (P5 in PLAN.md).
+
+### Added
+- A hand-drawn icon set: every icon redrawn with a visible pen wobble and faded
+  hatching, plus new ones the next releases need (location, tag, bookmark,
+  walk, users, plus, check, close, sparkle).
+- Sketched charts: attendance and goal rings and the Skip Advisor's gauge are
+  now hand-drawn with rough.js, with hatching that draws itself in. Each chart
+  keeps the same wobble every time you open it.
+- Empty-state illustrations for the timetable, the board, money and places,
+  which sketch themselves in when a screen has nothing to show yet.
+- The maroon felt colours the soft board will use.
+
 ## [0.1.1] — 2026-09-21
 
 ### Fixed

@@ -1,7 +1,8 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { AnimatedNumber, ProgressRing, Rise, Stagger } from "@/components/ui/motion-primitives";
+import { SketchRing } from "@/components/charts/sketch-ring";
+import { AnimatedNumber, Rise, Stagger } from "@/components/ui/motion-primitives";
 import { cn } from "@/lib/cn";
 import type { ModuleAttendance } from "@/lib/attendance/stats";
 
@@ -29,10 +30,11 @@ export function AttendanceSummary({ modules }: { modules: ModuleAttendance[] }) 
           return (
             <Rise key={m.moduleId}>
               <Card className="flex items-center gap-4 p-4">
-                <ProgressRing
+                <SketchRing
                   value={m.percent ?? 0}
+                  seedKey={m.moduleId}
                   size={72}
-                  stroke={7}
+                  thickness={9}
                   tone={s.ring}
                 >
                   <span className="text-label font-bold tnum">
@@ -42,7 +44,7 @@ export function AttendanceSummary({ modules }: { modules: ModuleAttendance[] }) 
                       <AnimatedNumber value={m.percent} suffix="%" />
                     )}
                   </span>
-                </ProgressRing>
+                </SketchRing>
 
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate text-body font-semibold">{m.name}</h3>
