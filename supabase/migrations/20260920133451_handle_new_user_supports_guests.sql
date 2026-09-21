@@ -1,5 +1,4 @@
--- Applied to the live project as 20260920133451_handle_new_user_supports_guests.
--- Backfilled into the repo so a fresh database matches production.
+-- Live version 20260920133451. Backfilled into the repo so a fresh database matches production.
 
 -- Anonymous (guest) users have no email, so split_part(null, ...) produced a
 -- null display name and the app greeted them with "Hello, there".

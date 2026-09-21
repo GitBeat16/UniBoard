@@ -1,5 +1,4 @@
--- Applied to the live project as 20260920151750_calendar_feed.
--- Backfilled into the repo so a fresh database matches production.
+-- Live version 20260920151750. Backfilled into the repo so a fresh database matches production.
 
 -- A subscribable calendar feed.
 --

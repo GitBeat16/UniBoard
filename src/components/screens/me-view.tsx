@@ -215,6 +215,10 @@ export function MeView({
             Sign out
           </PillButton>
         </form>
+        <p className="mt-4 text-center text-caption text-muted tnum">
+          UniBoard v{process.env.NEXT_PUBLIC_APP_VERSION}
+          {process.env.NEXT_PUBLIC_COMMIT ? ` · ${process.env.NEXT_PUBLIC_COMMIT}` : " · dev"}
+        </p>
       </Rise>
     </Stagger>
   );

@@ -57,6 +57,24 @@ on push to `main`).
 - Uploads: Vercel caps a request at 4.5 MB, so timetable files are capped at 4 MB and
   photos are shrunk in the browser first (`src/lib/upload/shrink-image.ts`).
 
+## Releases
+
+Versions live in `package.json`, `CHANGELOG.md` and git tags, and the running
+version shows at the bottom of **Me**. To cut one:
+
+1. Move the `[Unreleased]` notes in `CHANGELOG.md` under the new version.
+2. Bump `version` in `package.json`, and commit.
+3. `git tag -a vX.Y.Z -m "vX.Y.Z"`, then `git push origin main --follow-tags`.
+4. `gh release create vX.Y.Z --notes-file <that version's notes>` (or draft it
+   from the tag on GitHub).
+
+## Migrations
+
+Files are named `<YYYYMMDDHHMMSS>_<name>.sql`, matching the version Supabase
+records when one is applied. The Supabase GitHub check compares the two and
+fails on any live version missing here, so a migration applied from the
+dashboard or MCP has to be added under the same version.
+
 ## Setup
 
 ```bash
@@ -93,7 +111,7 @@ src/lib/calendar/        RFC 5545 writer for the outgoing feed + its tests. Pure
 src/lib/ics/vision.ts    reads a timetable out of a photo or PDF via Groq
 src/lib/supabase/        browser / server / proxy clients, generated DB types
 src/proxy.ts             session refresh + route guard (Next 16's `middleware` successor)
-supabase/migrations/     schema, RLS — every migration applied to the live project is here, in order
+supabase/migrations/     schema, RLS — one file per live migration, named by its version
 ```
 
 ## Things worth knowing before you touch the code

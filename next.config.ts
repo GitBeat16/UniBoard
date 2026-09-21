@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
+import pkg from "./package.json";
 
 const nextConfig: NextConfig = {
+  // Shown on Me, so "which build am I looking at?" has an answer on the phone.
+  // The commit is Vercel's; locally there is none, and the footer says "dev".
+  env: {
+    NEXT_PUBLIC_APP_VERSION: pkg.version,
+    NEXT_PUBLIC_COMMIT: (process.env.VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7),
+  },
+
   // Keeps the dev badge out of design screenshots.
   devIndicators: false,
 
