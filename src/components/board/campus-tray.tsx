@@ -51,7 +51,7 @@ export function CampusTray({
           below and tick &ldquo;share&rdquo; to be the first.
         </p>
       ) : (
-        <ul className="-mx-5 mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-2">
+        <ul className="-mx-5 mt-3 flex snap-x gap-3 overflow-x-auto px-5 pb-2 @4xl:mx-0 @4xl:flex-col @4xl:overflow-visible @4xl:px-0 @4xl:pb-0">
           <AnimatePresence initial={false}>
             {events.map((e) => (
               <CampusCard key={e.id} event={e} />
@@ -72,7 +72,7 @@ function CampusCard({ event }: { event: BoardEvent }) {
       animate={{ opacity: pending ? 0.6 : 1, scale: 1 }}
       // Pinning sends it up onto the board; hiding just fades it.
       exit={{ opacity: 0, y: -40, scale: 0.9, transition: { duration: 0.3, ease: EASE_SOFT } }}
-      className="flex w-60 shrink-0 snap-start flex-col rounded-tile bg-paper p-4 shadow-soft"
+      className="flex w-60 shrink-0 snap-start flex-col rounded-tile bg-paper p-4 shadow-soft @4xl:w-full"
     >
       <p className="line-clamp-2 text-body font-bold leading-snug">{event.title}</p>
       <p className="mt-1 text-label text-ink/80 tnum">

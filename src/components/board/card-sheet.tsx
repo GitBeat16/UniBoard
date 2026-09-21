@@ -7,6 +7,7 @@ import { LocalTime } from "@/components/ui/local-time";
 import { PillButton } from "@/components/ui/pill-button";
 import { cn } from "@/lib/cn";
 import { EASE_SOFT, SOFT_SPRING } from "@/lib/motion";
+import { useMediaQuery } from "@/lib/use-media-query";
 import type { BoardCard, CardShape } from "@/lib/board/items";
 import { URGENCY_COPY } from "@/lib/work/urgency";
 import {
@@ -35,6 +36,9 @@ export function CardSheet({
 }) {
   const [pending, start] = useTransition();
   const closeRef = useRef<HTMLButtonElement>(null);
+  // A bottom sheet under a thumb; a centred dialog once there is a desk.
+  const wide = useMediaQuery("(min-width: 768px)");
+  const enter = wide ? { opacity: 0, y: 24, scale: 0.97 } : { y: "100%" };
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -56,7 +60,7 @@ export function CardSheet({
   const urgency = URGENCY_COPY[card.urgency];
 
   return (
-    <div className="fixed inset-0 z-40">
+    <div className="fixed inset-0 z-40 flex items-end justify-center md:items-center md:p-6">
       <motion.button
         type="button"
         aria-label="Close"
@@ -72,17 +76,17 @@ export function CardSheet({
         aria-modal="true"
         aria-labelledby="card-sheet-title"
         className={cn(
-          "absolute inset-x-0 bottom-0 mx-auto max-h-[88dvh] w-full max-w-md overflow-y-auto",
-          "rounded-t-[2rem] bg-paper px-6 pb-10 pt-4 shadow-lift",
+          "relative max-h-[88dvh] w-full max-w-md overflow-y-auto md:max-w-lg",
+          "rounded-t-[2rem] bg-paper px-6 pb-10 pt-4 shadow-lift md:rounded-[2rem] md:px-8 md:pb-8 md:pt-7",
           pending && "opacity-80",
         )}
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%", transition: { duration: 0.25, ease: EASE_SOFT } }}
+        initial={enter}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ ...enter, transition: { duration: 0.22, ease: EASE_SOFT } }}
         transition={SOFT_SPRING}
         style={{ ["--tone" as string]: tone }}
       >
-        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-hairline" aria-hidden="true" />
+        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-hairline md:hidden" aria-hidden="true" />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-2 text-caption font-semibold uppercase text-muted">

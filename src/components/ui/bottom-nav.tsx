@@ -15,8 +15,9 @@ import {
 } from "./icons";
 
 // Attendance lives inside Timetable, and the Advisor is reached from a class —
-// neither earns a tab. Five is already the ceiling.
-const tabs = [
+// neither earns a tab. Five is already the ceiling. Shared with SideNav, so
+// phone and laptop always offer the same five places.
+export const tabs = [
   { href: "/", label: "Home", icon: IconHome },
   { href: "/timetable", label: "Timetable", icon: IconTimetable },
   { href: "/board", label: "Board", icon: IconBoard },
@@ -24,18 +25,31 @@ const tabs = [
   { href: "/me", label: "Me", icon: IconMe },
 ] as const;
 
-export function BottomNav() {
+export function isActive(href: string, pathname: string) {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
+
+/**
+ * Phones and tablets. On a laptop the SideNav takes over (lg and up), unless
+ * `always` — the /preview gallery's phone frames keep theirs at any width.
+ */
+export function BottomNav({ always = false }: { always?: boolean }) {
   const pathname = usePathname();
   // layoutId is page-global; scope it so two navs on one page (the /preview
   // gallery) do not share — and steal — the same sliding pill.
   const pillId = useId();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto w-full max-w-md px-4 pb-4">
+    <nav
+      aria-label="Main"
+      className={cn(
+        "fixed inset-x-0 bottom-0 z-20 mx-auto w-full max-w-md px-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
+        !always && "lg:hidden",
+      )}
+    >
       <ul className="flex items-center justify-between rounded-full bg-paper px-2 py-2 shadow-lift">
         {tabs.map(({ href, label, icon: Icon }) => {
-          const active =
-            href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const active = isActive(href, pathname);
 
           return (
             <li key={href} className="relative">

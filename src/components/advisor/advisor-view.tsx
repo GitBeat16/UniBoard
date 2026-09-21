@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useId, useMemo, useState, useTransition } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Card } from "@/components/ui/card";
 import { FloraSays } from "@/components/flora/flora-says";
@@ -50,6 +50,8 @@ const STATES: Array<{ id: SelfState; label: string }> = [
 
 export function AdvisorView({ payload }: { payload: AdvisorPayload }) {
   const [state, setState] = useState<SelfState>("fine");
+  // layoutId is page-global; scoped so two Advisors never share one pill.
+  const pillId = useId();
   const [decided, setDecided] = useState<boolean | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -131,6 +133,10 @@ export function AdvisorView({ payload }: { payload: AdvisorPayload }) {
         </div>
       </Rise>
 
+      {/* The call and its reasons on the left; deciding on the right, once
+          there is room for both. */}
+      <div className="flex flex-col gap-6 @2xl:grid @2xl:grid-cols-2 @2xl:items-start @2xl:gap-8">
+      <div className="flex min-w-0 flex-col gap-6">
       <Rise>
         <Card>
           <p className="text-caption font-semibold uppercase text-muted">The call</p>
@@ -213,6 +219,10 @@ export function AdvisorView({ payload }: { payload: AdvisorPayload }) {
         </section>
       </Rise>
 
+      </div>
+
+      {/* How you feel, the decision and the Reclaim plan. */}
+      <div className="flex min-w-0 flex-col gap-6">
       <Rise>
         <Card>
           <h3 className="text-caption font-semibold uppercase text-muted">
@@ -233,7 +243,7 @@ export function AdvisorView({ payload }: { payload: AdvisorPayload }) {
               >
                 {state === s.id && (
                   <motion.span
-                    layoutId="state-pill"
+                    layoutId={`${pillId}-state-pill`}
                     transition={LAYOUT_SPRING}
                     className="absolute inset-0 rounded-full bg-ink"
                   />
@@ -319,6 +329,8 @@ export function AdvisorView({ payload }: { payload: AdvisorPayload }) {
           )}
         </AnimatePresence>
       </Rise>
+      </div>
+      </div>
     </Stagger>
   );
 }

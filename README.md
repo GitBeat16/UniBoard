@@ -93,6 +93,7 @@ npm run dev
 | `npm run lint` | eslint |
 | `npm test` | vitest — advisor guardrails, urgency, Flora, Reclaim, ICS writing (65 tests) |
 | `/preview` | design gallery of every screen, no data, dev-only |
+| `/preview/wide` | the same screens at tablet (820px) and laptop (1280px) widths |
 | `npm run db:types` | regenerate `src/lib/supabase/database.types.ts` (needs the Supabase CLI) |
 
 ## Layout
@@ -202,5 +203,15 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
   `.card-polaroid`, `.card-tag` and `.card-torn`, all reading the card's colour from
   `--tone`. Shapes that use `clip-path` lose `box-shadow`, so the shadow is a
   `drop-shadow` on the wrapper (`.card-hang`). Text never sits directly on the felt.
+- **Screens lay out by the space they get, not the window.** The shell switches on the
+  viewport — bottom bar on phones and tablets, `SideNav` from `lg` — but `<main>` is a CSS
+  container and every screen uses container variants (`@2xl:` two columns, `@4xl:` the
+  Board's sidebar). That is why the same component is right in the app, beside the
+  sidebar, and in the `/preview` phone frames. Check all three widths at `/preview/wide`.
+  Where desktop groups things differently from the phone's order, the column wrappers
+  are `display: contents` below the breakpoint and children carry `order-*`.
+- **Never animate a full-width strip sideways to move a marker.** A translated element
+  still takes up space past the edge, and a phone will scroll the whole screen sideways.
+  Move the marker itself (`left`), as `VerdictGauge` does.
 - **Light mode only**, by decision. The design is built on white (PLAN.md §8).
 # UniBoard

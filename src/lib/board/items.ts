@@ -147,12 +147,22 @@ export function buildBoard({
   return { pinned, campus };
 }
 
-/** Deal cards into two columns row by row, so the most urgent sit at the top. */
-export function twoColumns<T>(items: T[]): [T[], T[]] {
-  const left: T[] = [];
-  const right: T[] = [];
-  items.forEach((item, i) => (i % 2 === 0 ? left : right).push(item));
-  return [left, right];
+/**
+ * Deal cards into `n` columns row by row, so the most urgent sit along the
+ * top whatever the width. (CSS columns would fill top-to-bottom instead and
+ * bury the second-most-urgent card at the bottom of column one.)
+ */
+export function dealColumns<T>(items: T[], n: number): T[][] {
+  const cols: T[][] = Array.from({ length: Math.max(1, n) }, () => []);
+  items.forEach((item, i) => cols[i % cols.length].push(item));
+  return cols;
+}
+
+/** How many card columns fit a board of this width. */
+export function columnsFor(width: number): number {
+  if (width >= 760) return 4;
+  if (width >= 500) return 3;
+  return 2;
 }
 
 function hash(key: string) {

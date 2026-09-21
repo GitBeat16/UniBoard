@@ -103,7 +103,7 @@ export function TimetableView({
       )}
 
       {empty ? (
-        <Stagger>
+        <Stagger className="mx-auto w-full max-w-xl">
           <Rise>
             <Illustration name="timetable" tone="sky" className="mx-auto -mb-2 w-56" />
           </Rise>
@@ -112,7 +112,10 @@ export function TimetableView({
           </Rise>
         </Stagger>
       ) : (
-        <>
+        <div className="flex flex-col gap-8 @2xl:grid @2xl:grid-cols-2 @2xl:items-start @4xl:grid-cols-[3fr_2fr]">
+          {/* The week and the day's classes; attendance and "add more" beside
+              them once there is room. */}
+          <div className="flex min-w-0 flex-col gap-8">
           {mounted && (
             <Stagger>
               <Rise>
@@ -133,7 +136,7 @@ export function TimetableView({
           {mounted && (
             <section>
               <h2 className="text-caption font-semibold uppercase text-muted">
-                {new Date(activeKey).toLocaleDateString(undefined, {
+                {new Date(`${activeKey}T12:00:00`).toLocaleDateString(undefined, {
                   weekday: "long",
                   day: "numeric",
                   month: "long",
@@ -171,6 +174,9 @@ export function TimetableView({
             </section>
           )}
 
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-8">
           <AttendanceSummary modules={modules} />
 
           <section>
@@ -181,7 +187,8 @@ export function TimetableView({
               <ImportPanel compact />
             </div>
           </section>
-        </>
+          </div>
+        </div>
       )}
     </div>
   );

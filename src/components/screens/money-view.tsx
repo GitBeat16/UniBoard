@@ -120,6 +120,10 @@ export function MoneyView({
         </Rise>
       )}
 
+      {/* Budget and logging on the left; what went where, and food nearby,
+          beside them once there is room. */}
+      <div className="flex flex-col gap-8 @2xl:grid @2xl:grid-cols-2 @2xl:items-start">
+      <div className="flex min-w-0 flex-col gap-8">
       {/* ---------------------------------------------------------- budget */}
       <Rise>
         {!mounted ? (
@@ -162,6 +166,9 @@ export function MoneyView({
         <QuickAdd currency={currency} />
       </Rise>
 
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-8">
       {/* ---------------------------------------------------- recent spends */}
       {summary && (
         <Rise>
@@ -196,6 +203,8 @@ export function MoneyView({
           )}
         </section>
       </Rise>
+      </div>
+      </div>
     </Stagger>
   );
 }

@@ -54,8 +54,8 @@ function Phone({ label, children }: { label: string; children: React.ReactNode }
         style={{ transform: "translateZ(0)" }}
       >
         <BlobBackground />
-        <div className="h-full overflow-y-auto px-5 pb-32 pt-10">{children}</div>
-        <BottomNav />
+        <div className="@container h-full overflow-y-auto px-5 pb-32 pt-10">{children}</div>
+        <BottomNav always />
       </div>
     </figure>
   );

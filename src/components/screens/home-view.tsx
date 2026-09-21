@@ -73,6 +73,9 @@ export function HomeView({
         />
       </Rise>
 
+      {/* One column on a phone; beside each other from tablet width up. */}
+      <div className="flex flex-col gap-8 @2xl:grid @2xl:grid-cols-2 @2xl:items-start @4xl:grid-cols-[3fr_2fr]">
+      <div className="flex flex-col gap-8">
       <Rise>
         <Card className="relative overflow-hidden">
           <p className="flex items-center gap-2 text-caption font-semibold uppercase text-muted">
@@ -96,7 +99,7 @@ export function HomeView({
               />
               <div className="mt-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 className="truncate text-h1 font-bold">
+                  <h2 className="line-clamp-2 break-words text-h1 font-bold">
                     {nextSession.moduleName}
                   </h2>
                   <p className="mt-1 text-body text-muted tnum">
@@ -163,6 +166,8 @@ export function HomeView({
         </Rise>
       )}
 
+      </div>
+
       <Rise>
         <section>
           <h2 className="text-caption font-semibold uppercase text-muted">
@@ -186,6 +191,7 @@ export function HomeView({
           </div>
         </section>
       </Rise>
+      </div>
     </Stagger>
   );
 }

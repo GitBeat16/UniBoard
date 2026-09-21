@@ -31,17 +31,18 @@ export function VerdictGauge({
         <span className="absolute inset-y-1 left-1/2 w-px -translate-x-1/2 bg-ink/30" />
       </div>
 
-      <motion.div
-        className="relative h-0"
-        initial={{ x: "50%" }}
-        animate={{ x: `${pct}%` }}
-        transition={SOFT_SPRING}
-      >
-        <span
+      {/* The marker moves by `left` inside a zero-height rail. Translating a
+          full-width strip instead (as this once did) pushed it past the right
+          edge and let the whole screen scroll sideways on a phone. */}
+      <div className="relative h-0">
+        <motion.span
           className="absolute -top-[1.125rem] size-4 -translate-x-1/2 rounded-full border-2 border-paper shadow-soft"
           style={{ backgroundColor: tone }}
+          initial={{ left: "50%" }}
+          animate={{ left: `${pct}%` }}
+          transition={SOFT_SPRING}
         />
-      </motion.div>
+      </div>
 
       <div className="mt-3 flex justify-between text-caption font-semibold uppercase text-muted">
         <span>Skip is fine</span>

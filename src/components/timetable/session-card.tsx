@@ -49,7 +49,7 @@ export function SessionCard({
           <p className="text-caption font-semibold uppercase text-muted tnum">
             <LocalTime iso={session.startsAt} /> – <LocalTime iso={session.endsAt} />
           </p>
-          <h3 className="mt-1 truncate text-h2 font-bold">{session.moduleName}</h3>
+          <h3 className="mt-1 line-clamp-2 break-words text-h2 font-bold">{session.moduleName}</h3>
           <p className="mt-1 text-label text-muted">
             {SESSION_TYPE_LABEL[session.type]}
             {session.room ? ` · ${session.room}` : ""}

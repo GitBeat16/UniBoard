@@ -15,11 +15,13 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { cn } from "@/lib/cn";
 import { LAYOUT_SPRING } from "@/lib/motion";
 import { useNow } from "@/lib/use-now";
+import { useElementWidth } from "@/lib/use-element-width";
 import {
   buildBoard,
   hasTag,
   topTags,
-  twoColumns,
+  columnsFor,
+  dealColumns,
   type BoardCard,
   type BoardEvent,
   type CardShape,
@@ -63,7 +65,8 @@ export function BoardView({
     if (filter === "done" && c.urgency !== "done") return false;
     return tag ? hasTag(c, tag) : true;
   });
-  const [left, right] = twoColumns(shown);
+  const [boardRef, boardWidth] = useElementWidth<HTMLDivElement>();
+  const columns = dealColumns(shown, columnsFor(boardWidth));
   const tags = useMemo(() => topTags(pinned.filter((c) => c.urgency !== "done")), [pinned]);
 
   const hours = useMemo(() => outstandingHours(work, nowDate), [work, nowDate]);
@@ -91,107 +94,131 @@ export function BoardView({
         </Rise>
       )}
 
-      {mounted && work.length > 0 && (
-        <Rise>
-          <Card className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-caption font-semibold uppercase text-muted">Next seven days</p>
-              <p className="mt-1 text-h1 font-bold tnum">
-                <AnimatedNumber value={hours} decimals={hours % 1 ? 1 : 0} />
-                <span className="text-h2"> h</span>
-              </p>
-              <p className="mt-1 text-label text-muted">of work you have estimated</p>
-            </div>
-            {overdue > 0 && (
-              <span className="rounded-chip bg-coral px-3 py-1.5 text-caption font-semibold uppercase text-paper">
-                {overdue} overdue
-              </span>
-            )}
-          </Card>
-        </Rise>
-      )}
-
-      <Rise>
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-1 rounded-full bg-paper p-1 shadow-soft">
-            {(["live", "done", "all"] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFilter(f)}
-                aria-pressed={filter === f}
-                className={cn(
-                  "relative flex-1 rounded-full px-3 py-2 text-label font-semibold capitalize",
-                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
-                  filter === f ? "text-paper" : "text-muted hover:text-ink",
-                )}
-              >
-                {filter === f && (
-                  <motion.span
-                    layoutId={`${filterId}-board-filter`}
-                    transition={LAYOUT_SPRING}
-                    className="absolute inset-0 rounded-full bg-ink"
-                  />
-                )}
-                <span className="relative">{f === "live" ? "Pinned" : f}</span>
-              </button>
-            ))}
-          </div>
-
-          {tags.length > 1 && (
-            <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1" role="group" aria-label="Filter by tag">
-              {tags.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  aria-pressed={tag === t}
-                  onClick={() => setTag((cur) => (cur === t ? null : t))}
-                  className={cn(
-                    "shrink-0 rounded-full px-3.5 py-1.5 text-label font-semibold transition-colors",
-                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
-                    tag === t ? "bg-ink text-paper" : "bg-paper text-ink shadow-soft hover:bg-ink/5",
-                  )}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </Rise>
-
-      {/* ------------------------------------------------------- the board */}
-      <Rise>
-        <div className="board-frame">
-          <div className="felt min-h-[22rem] px-3.5 pb-6 pt-7">
-            {!mounted ? null : shown.length === 0 ? (
-              <EmptyBoard filter={filter} filtered={tag !== null} />
-            ) : (
-              <div className="flex gap-3.5">
-                {[left, right].map((col, c) => (
-                  <ul key={c} className={cn("flex min-w-0 flex-1 flex-col gap-6", c === 1 && "pt-4")}>
-                    <AnimatePresence mode="popLayout">
-                      {col.map((card, i) => (
-                        <PinnedCard key={card.key} card={card} index={i * 2 + c} onOpen={onOpen} />
-                      ))}
-                    </AnimatePresence>
-                  </ul>
+      {/* Phone and tablet: one column, in this order — stats, filters, board,
+          campus, add. Laptop (@4xl): the board on the left, everything else in
+          a sidebar. The wrappers are display:contents until then, so the
+          order-* classes place their children in the single column. */}
+      <div className="flex flex-col gap-8 @4xl:grid @4xl:grid-cols-[minmax(0,1fr)_19rem] @4xl:items-start @5xl:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="contents @4xl:flex @4xl:min-w-0 @4xl:flex-col @4xl:gap-6">
+          <Rise className="order-2">
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-1 rounded-full bg-paper p-1 shadow-soft @4xl:max-w-md">
+                {(["live", "done", "all"] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFilter(f)}
+                    aria-pressed={filter === f}
+                    className={cn(
+                      "relative flex-1 rounded-full px-3 py-2 text-label font-semibold capitalize",
+                      "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
+                      filter === f ? "text-paper" : "text-muted hover:text-ink",
+                    )}
+                  >
+                    {filter === f && (
+                      <motion.span
+                        layoutId={`${filterId}-board-filter`}
+                        transition={LAYOUT_SPRING}
+                        className="absolute inset-0 rounded-full bg-ink"
+                      />
+                    )}
+                    <span className="relative">{f === "live" ? "Pinned" : f}</span>
+                  </button>
                 ))}
               </div>
-            )}
-          </div>
+
+              {tags.length > 1 && (
+                <div
+                  className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 @2xl:mx-0 @2xl:flex-wrap @2xl:overflow-visible @2xl:px-0"
+                  role="group"
+                  aria-label="Filter by tag"
+                >
+                  {tags.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      aria-pressed={tag === t}
+                      onClick={() => setTag((cur) => (cur === t ? null : t))}
+                      className={cn(
+                        "shrink-0 rounded-full px-3.5 py-1.5 text-label font-semibold transition-colors",
+                        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
+                        tag === t ? "bg-ink text-paper" : "bg-paper text-ink shadow-soft hover:bg-ink/5",
+                      )}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Rise>
+
+          {/* ------------------------------------------------------- the board */}
+          <Rise className="order-3">
+            <div className="board-frame">
+              <div ref={boardRef} className="felt min-h-[22rem] px-3.5 pb-6 pt-7 @2xl:min-h-[30rem] @2xl:px-5 @2xl:pt-9">
+                {!mounted || boardWidth === 0 ? null : shown.length === 0 ? (
+                  <EmptyBoard filter={filter} filtered={tag !== null} />
+                ) : (
+                  <div className="flex gap-3.5 @2xl:gap-5">
+                    {columns.map((col, c) => (
+                      <ul
+                        key={`${columns.length}-${c}`}
+                        // Every other column starts a little lower, like a board
+                        // pinned by hand rather than a grid.
+                        className={cn("flex min-w-0 flex-1 flex-col gap-6", c % 2 === 1 && "pt-4")}
+                      >
+                        <AnimatePresence mode="popLayout">
+                          {col.map((card, i) => (
+                            <PinnedCard
+                              key={card.key}
+                              card={card}
+                              index={i * columns.length + c}
+                              onOpen={onOpen}
+                            />
+                          ))}
+                        </AnimatePresence>
+                      </ul>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </Rise>
         </div>
-      </Rise>
 
-      {mounted && (
-        <Rise>
-          <CampusTray events={campus} university={university} />
-        </Rise>
-      )}
+        <div className="contents @4xl:flex @4xl:min-w-0 @4xl:flex-col @4xl:gap-8">
+          {mounted && work.length > 0 && (
+            <Rise className="order-1">
+              <Card className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-caption font-semibold uppercase text-muted">Next seven days</p>
+                  <p className="mt-1 text-h1 font-bold tnum">
+                    <AnimatedNumber value={hours} decimals={hours % 1 ? 1 : 0} />
+                    <span className="text-h2"> h</span>
+                  </p>
+                  <p className="mt-1 text-label text-muted">of work you have estimated</p>
+                </div>
+                {overdue > 0 && (
+                  <span className="rounded-chip bg-coral px-3 py-1.5 text-caption font-semibold uppercase text-paper">
+                    {overdue} overdue
+                  </span>
+                )}
+              </Card>
+            </Rise>
+          )}
 
-      <Rise>
-        <AddToBoard modules={modules} hasUniversity={university !== null} />
-      </Rise>
+          {mounted && (
+            <Rise className="order-4">
+              <CampusTray events={campus} university={university} />
+            </Rise>
+          )}
+
+          <Rise className="order-5">
+            <AddToBoard modules={modules} hasUniversity={university !== null} />
+          </Rise>
+        </div>
+      </div>
 
       <AnimatePresence>
         {open && (

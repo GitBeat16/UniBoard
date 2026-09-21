@@ -82,6 +82,8 @@ export function MeView({
         />
       </Rise>
 
+      <div className="flex flex-col gap-8 @2xl:grid @2xl:grid-cols-2 @2xl:items-start">
+      <div className="flex min-w-0 flex-col gap-8">
       {isGuest && (
         <Rise>
           <UpgradeCard />
@@ -175,6 +177,9 @@ export function MeView({
         </Card>
       </Rise>
 
+      </div>
+
+      <div className="flex min-w-0 flex-col gap-8">
       <section>
         <h2 className="text-caption font-semibold uppercase text-muted">Goals</h2>
 
@@ -236,6 +241,8 @@ export function MeView({
           {process.env.NEXT_PUBLIC_COMMIT ? ` · ${process.env.NEXT_PUBLIC_COMMIT}` : " · dev"}
         </p>
       </Rise>
+      </div>
+      </div>
     </Stagger>
   );
 }

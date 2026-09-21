@@ -7,7 +7,8 @@ import {
   hasTag,
   parseTags,
   topTags,
-  twoColumns,
+  columnsFor,
+  dealColumns,
   type BoardEvent,
 } from "./items";
 
@@ -117,12 +118,24 @@ describe("hangOf", () => {
   });
 });
 
-describe("twoColumns", () => {
-  it("deals row by row so the top row holds the two most urgent", () => {
-    expect(twoColumns([1, 2, 3, 4, 5])).toEqual([
+describe("dealColumns", () => {
+  it("deals row by row so the top row holds the most urgent", () => {
+    expect(dealColumns([1, 2, 3, 4, 5], 2)).toEqual([
       [1, 3, 5],
       [2, 4],
     ]);
+    expect(dealColumns([1, 2, 3, 4, 5], 3)).toEqual([[1, 4], [2, 5], [3]]);
+  });
+  it("never makes zero columns", () => {
+    expect(dealColumns([1], 0)).toEqual([[1]]);
+  });
+});
+
+describe("columnsFor", () => {
+  it("fits two on a phone, three on a tablet, four on a wide screen", () => {
+    expect(columnsFor(340)).toBe(2);
+    expect(columnsFor(620)).toBe(3);
+    expect(columnsFor(900)).toBe(4);
   });
 });
 
