@@ -145,6 +145,37 @@ describe("uids", () => {
     );
     expect(out[0].uid).not.toBe(out[1].uid);
   });
+
+  it("distinguishes the same class held on two weekdays", () => {
+    // The common shape of a real timetable: one module, one hour, two days.
+    // Sharing a uid here is what made the import fail on the second row.
+    const out = expandExtraction(
+      extraction([entry({ weekday: 1 }), entry({ weekday: 3 })]),
+      { weeks: 4, from: FROM, timeZone: TZ },
+    );
+    expect(out).toHaveLength(8);
+    expect(new Set(out.map((s) => s.uid)).size).toBe(8);
+  });
+
+  it("keeps dated entries on different days apart", () => {
+    const out = expandExtraction(
+      extraction([
+        entry({ weekday: null, date: "2026-09-22" }),
+        entry({ weekday: null, date: "2026-09-24" }),
+      ]),
+      { weeks: 1, from: FROM, timeZone: TZ },
+    );
+    expect(new Set(out.map((s) => s.uid)).size).toBe(2);
+  });
+
+  it("drops a slot the photo was read as twice", () => {
+    const out = expandExtraction(extraction([entry(), entry()]), {
+      weeks: 2,
+      from: FROM,
+      timeZone: TZ,
+    });
+    expect(out).toHaveLength(2);
+  });
 });
 
 describe("ordering", () => {

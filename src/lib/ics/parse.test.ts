@@ -55,3 +55,51 @@ describe("time zones in feeds", () => {
     ]);
   });
 });
+
+describe("uids", () => {
+  it("keeps two overrides of one recurring event apart", () => {
+    // A rescheduled week repeats its parent's UID and is told apart by
+    // RECURRENCE-ID. Without that, both weeks claim the same row.
+    const { sessions } = parseIcs(
+      cal(
+        vevent(
+          "db",
+          ";TZID=Asia/Kolkata:20260922T110000",
+          ";TZID=Asia/Kolkata:20260922T120000",
+          "RECURRENCE-ID;TZID=Asia/Kolkata:20260922T090000",
+        ),
+        vevent(
+          "db",
+          ";TZID=Asia/Kolkata:20260929T110000",
+          ";TZID=Asia/Kolkata:20260929T120000",
+          "RECURRENCE-ID;TZID=Asia/Kolkata:20260929T090000",
+        ),
+      ),
+      { ...window, timeZone: "Asia/Kolkata" },
+    );
+    expect(sessions).toHaveLength(2);
+    expect(sessions[0].uid).not.toBe(sessions[1].uid);
+  });
+
+  it("gives an entry with no UID one of its own", () => {
+    const raw = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      "DTSTART;TZID=Asia/Kolkata:20260922T090000",
+      "DTEND;TZID=Asia/Kolkata:20260922T100000",
+      "SUMMARY:Databases",
+      "END:VEVENT",
+      "BEGIN:VEVENT",
+      "DTSTART;TZID=Asia/Kolkata:20260923T090000",
+      "DTEND;TZID=Asia/Kolkata:20260923T100000",
+      "SUMMARY:Databases",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+
+    const { sessions } = parseIcs(raw, { ...window, timeZone: "Asia/Kolkata" });
+    expect(sessions).toHaveLength(2);
+    expect(new Set(sessions.map((s) => s.uid)).size).toBe(2);
+  });
+});

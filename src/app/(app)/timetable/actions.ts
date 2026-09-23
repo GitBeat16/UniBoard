@@ -74,9 +74,13 @@ export async function importTimetable(
 
   let incoming: IncomingSession[] = [];
   const notes: string[] = [];
+  // A photo is a whole weekly pattern, not an addition to one, so a second
+  // upload replaces what the last one put in the diary.
+  let fromPhoto = false;
 
   try {
     if (file instanceof File && file.size > 0 && isVisionFile(file.type)) {
+      fromPhoto = true;
       // ---- photo or PDF -> Claude reads the grid ----
       if (file.size > MAX_UPLOAD) {
         return { ok: false, message: "That file is too large (4 MB max)." };
@@ -176,12 +180,16 @@ export async function importTimetable(
     created?.forEach((m, i) => byKey.set(toCreate[i][0], m.id));
   }
 
-  const sessionRows: TablesInsert<"class_sessions">[] = [];
+  // Keyed by external_uid: Postgres refuses an upsert whose batch names the
+  // same row twice ("ON CONFLICT DO UPDATE command cannot affect row a second
+  // time"), and a messy feed or a photo read twice can do exactly that. The
+  // last reading of a slot wins.
+  const byUid = new Map<string, TablesInsert<"class_sessions">>();
   for (const [key, group] of groups) {
     const moduleId = byKey.get(key);
     if (!moduleId) continue;
     for (const s of group.sessions) {
-      sessionRows.push({
+      byUid.set(s.uid, {
         user_id: user.id,
         module_id: moduleId,
         type: s.type,
@@ -192,12 +200,18 @@ export async function importTimetable(
       });
     }
   }
+  const sessionRows = [...byUid.values()];
 
   for (let i = 0; i < sessionRows.length; i += CHUNK) {
     const { error } = await supabase
       .from("class_sessions")
       .upsert(sessionRows.slice(i, i + CHUNK), { onConflict: "user_id,external_uid" });
     if (error) return { ok: false, message: error.message };
+  }
+
+  if (fromPhoto) {
+    const stale = await clearReplacedPhotoClasses(supabase, user.id, new Set(byUid.keys()));
+    if (stale > 0) notes.push(`${stale} classes from an earlier photo were replaced`);
   }
 
   revalidatePath("/timetable");
@@ -209,6 +223,37 @@ export async function importTimetable(
       `Imported ${sessionRows.length} classes across ${groups.size} modules` +
       (notes.length ? ` (${notes.join("; ")}).` : "."),
   };
+}
+
+/**
+ * Drop the classes a previous photo import left behind.
+ *
+ * Only ones still to come: a class that has already happened may carry an
+ * attendance mark, and that mark is the student's, not the timetable's.
+ */
+async function clearReplacedPhotoClasses(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  keep: Set<string>,
+): Promise<number> {
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .select("id, external_uid")
+    .eq("user_id", userId)
+    .like("external_uid", "vision:%")
+    .gt("starts_at", new Date().toISOString());
+  if (error || !data) return 0;
+
+  const ids = data.filter((s) => s.external_uid && !keep.has(s.external_uid)).map((s) => s.id);
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const { error: removeError } = await supabase
+      .from("class_sessions")
+      .delete()
+      .eq("user_id", userId)
+      .in("id", ids.slice(i, i + CHUNK));
+    if (removeError) return 0;
+  }
+  return ids.length;
 }
 
 const manualSchema = z.object({

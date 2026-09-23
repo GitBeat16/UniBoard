@@ -84,7 +84,7 @@ export function parseIcs(
       const start = toInstant(event.startDate, timeZone);
       const end = toInstant(event.endDate, timeZone);
       if (end >= from && start <= to) {
-        sessions.push({ uid: event.uid, ...base, start, end });
+        sessions.push({ uid: singleUid(vevent, event, start), ...base, start, end });
       }
       if (sessions.length >= maxEvents) {
         truncated = true;
@@ -156,4 +156,20 @@ export function toInstant(t: ICAL.Time, fallbackZone: string): Date {
     },
     zone,
   );
+}
+
+/**
+ * A uid for a one-off entry.
+ *
+ * Feeds are not as tidy as the spec: a recurrence override repeats its
+ * parent's UID, and some exports leave UID out altogether. Either way two
+ * entries would end up claiming the same row, so the recurrence id — or the
+ * start time, as a last resort — is folded in.
+ */
+function singleUid(vevent: ICAL.Component, event: ICAL.Event, start: Date): string {
+  const uid = event.uid?.trim();
+  const recurrenceId = vevent.getFirstPropertyValue("recurrence-id");
+  if (uid && recurrenceId) return `${uid}::${recurrenceId.toString()}`;
+  if (uid) return uid;
+  return `ics:${start.toISOString()}:${(event.summary ?? "").trim().toLowerCase()}`;
 }

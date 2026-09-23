@@ -304,7 +304,9 @@ export type ExpandedSession = {
  *
  * The uid is derived from the pattern rather than a random value, so
  * re-uploading the same timetable updates those rows instead of duplicating
- * the whole term.
+ * the whole term. It has to name the slot completely — module, type, day and
+ * times — because one module usually meets at the same hour on more than one
+ * day, and two slots sharing a uid would collide on import.
  */
 export function expandExtraction(
   extraction: TimetableExtraction,
@@ -317,14 +319,32 @@ export function expandExtraction(
   const today = wallToday(from, timeZone);
   const weekStart = addDays(today, -((weekdayOf(today) + 6) % 7));
 
+  // A photo can be read twice — the same row picked up from two columns of a
+  // grid, say. Identical slots are the same class, so the second one is dropped
+  // rather than fighting the first for the same uid.
+  const seen = new Set<string>();
+
   for (const entry of extraction.entries) {
     const start = parseClock(entry.startTime);
     const end = parseClock(entry.endTime);
     if (!start || !end) continue;
 
-    const key = `${entry.code ?? entry.moduleName}|${entry.type}|${entry.startTime}`
+    const when = entry.date ?? (entry.weekday === null ? null : `d${entry.weekday}`);
+    if (!when) continue;
+
+    const key = [
+      entry.code ?? entry.moduleName,
+      entry.type,
+      when,
+      entry.startTime,
+      entry.endTime,
+    ]
+      .join("|")
       .toLowerCase()
       .replace(/\s+/g, "-");
+
+    if (seen.has(key)) continue;
+    seen.add(key);
 
     if (entry.date) {
       const m = entry.date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -333,7 +353,7 @@ export function expandExtraction(
       const slot = makeSlot(day, start, end, timeZone);
       if (!slot) continue;
       out.push({
-        uid: `vision:${key}:${entry.date}`,
+        uid: `vision:${key}`,
         title: entry.moduleName,
         type: entry.type,
         location: entry.room,
