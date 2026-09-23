@@ -8,8 +8,14 @@ import {
 } from "@/lib/time/zone";
 import Groq from "groq-sdk";
 import { extractText, getDocumentProxy } from "unpdf";
-import { z } from "zod";
 import type { Enums } from "@/lib/supabase/database.types";
+import {
+  batchesIn,
+  Grid,
+  GRID_JSON_SCHEMA,
+  gridToEntries,
+  type TimetableGrid,
+} from "./grid";
 
 /**
  * Reading a timetable out of a photo or a PDF, via Groq.
@@ -50,94 +56,51 @@ export const VISION_ACCEPT = [...SUPPORTED_IMAGE_TYPES, "application/pdf"].join(
 
 export class VisionError extends Error {}
 
-const SessionType = z.enum([
-  "lecture",
-  "lab",
-  "seminar",
-  "tutorial",
-  "workshop",
-  "other",
-]);
+/**
+ * A timetable once it has been read: the classes themselves, and the batches
+ * the grid splits its practicals between. Nothing here is parsed off the wire
+ * — the model returns a grid, and `gridToEntries` builds this from it — so it
+ * is a plain type rather than a schema.
+ */
+export type TimetableEntry = {
+  moduleName: string;
+  code: string | null;
+  type: Enums<"session_type">;
+  weekday: number | null;
+  date: string | null;
+  startTime: string;
+  endTime: string;
+  room: string | null;
+  /** Which batches attend, or null when the whole class does. */
+  batches: string[] | null;
+};
 
-const Entry = z.object({
-  moduleName: z.string(),
-  code: z.string().nullable(),
-  type: SessionType,
-  weekday: z.number().int().min(0).max(6).nullable(),
-  date: z.string().nullable(),
-  startTime: z.string(),
-  endTime: z.string(),
-  room: z.string().nullable(),
-});
+export type TimetableExtraction = {
+  entries: TimetableEntry[];
+  confidence: "high" | "medium" | "low";
+  notes: string | null;
+  batches: string[];
+};
 
-const Extraction = z.object({
-  entries: z.array(Entry),
-  confidence: z.enum(["high", "medium", "low"]),
-  notes: z.string().nullable(),
-});
+const SYSTEM = `You transcribe university timetables into JSON. You are copying a
+grid, not summarising it.
 
-export type TimetableExtraction = z.infer<typeof Extraction>;
-
-/** Mirrors the Zod schema above; Groq wants JSON Schema on the wire. */
-const JSON_SCHEMA = {
-  type: "object",
-  properties: {
-    entries: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          moduleName: {
-            type: "string",
-            description: "Module or subject name, without the session type",
-          },
-          code: { type: ["string", "null"], description: "e.g. CS2004, or null" },
-          type: {
-            type: "string",
-            enum: ["lecture", "lab", "seminar", "tutorial", "workshop", "other"],
-          },
-          weekday: {
-            type: ["integer", "null"],
-            description: "0=Sunday … 6=Saturday. Null only when date is given",
-          },
-          date: {
-            type: ["string", "null"],
-            description: "YYYY-MM-DD, only if a specific date is shown",
-          },
-          startTime: { type: "string", description: "24-hour HH:MM" },
-          endTime: { type: "string", description: "24-hour HH:MM" },
-          room: { type: ["string", "null"] },
-        },
-        required: [
-          "moduleName",
-          "code",
-          "type",
-          "weekday",
-          "date",
-          "startTime",
-          "endTime",
-          "room",
-        ],
-        additionalProperties: false,
-      },
-    },
-    confidence: { type: "string", enum: ["high", "medium", "low"] },
-    notes: { type: ["string", "null"] },
-  },
-  required: ["entries", "confidence", "notes"],
-  additionalProperties: false,
-} as const;
-
-const SYSTEM = `You read university timetables and return JSON.
+The grid has a row per time slot and a column per weekday.
 
 Rules:
-- Extract every scheduled class you can see. Do not invent entries.
-- A weekly grid repeats: give weekday plus times, and leave date null.
-- Only set date when the timetable shows a specific calendar date.
-- Times are 24-hour HH:MM. If a cell spans two slots, use the full span.
-- Strip session-type words out of moduleName ("Databases", not "Databases Lecture").
-- If something is unreadable, leave it out and say so in notes rather than guessing.
-- Set confidence to low if the source is blurred, cropped, or partly illegible.
+- "days" is the weekday headings, left to right, exactly as printed. Leave out
+  a leading "Time" or "Period" column.
+- One row per time row of the grid, top to bottom, including break rows.
+- "cells" has one entry per weekday, in the same order as "days". Use an empty
+  string for a blank cell. Never skip a cell — the count must match every time.
+- Copy each cell's text as printed, including batch labels like E3 or G3 and
+  anything in square brackets. Do not tidy, expand or translate it.
+- If one cell holds two subjects for different batches, join them with " / ".
+- If a cell is merged across several time rows, repeat its text in every row it
+  covers.
+- Times as printed, in HH:MM. A 12-hour grid stays 12-hour; it is read later.
+- If a cell is unreadable, use an empty string and say so in notes.
+- Set confidence to low if the image is blurred, cropped or partly illegible.
 - Return only the JSON object. No commentary, no markdown fences.`;
 
 export async function extractTimetable({
@@ -147,7 +110,7 @@ export async function extractTimetable({
   /** base64, no newlines */
   data: string;
   mediaType: string;
-}): Promise<TimetableExtraction> {
+}): Promise<TimetableGrid> {
   if (!process.env.GROQ_API_KEY) {
     throw new VisionError(
       "Reading images and PDFs needs a GROQ_API_KEY in .env.local. A calendar link or .ics file works without one.",
@@ -158,26 +121,45 @@ export async function extractTimetable({
 
   if (mediaType === "application/pdf") {
     const text = await pdfToText(data);
-    return callGroq(client, TEXT_MODEL, [
+    const grid = await callGroq(client, TEXT_MODEL, [
       { role: "system", content: SYSTEM },
-      {
-        role: "user",
-        content: `Extract every class from this timetable.\n\n${text}`,
-      },
+      { role: "user", content: `Transcribe this timetable grid.\n\n${text}` },
     ]);
+    return grid;
   }
 
-  return callGroq(client, VISION_MODEL, [
+  const grid = await callGroq(client, VISION_MODEL, [
     { role: "system", content: SYSTEM },
     {
       role: "user",
       content: [
-        { type: "text", text: "Extract every class from this timetable." },
+        { type: "text", text: "Transcribe this timetable grid." },
         // Groq takes local images as a base64 data URL.
         { type: "image_url", image_url: { url: `data:${mediaType};base64,${data}` } },
       ],
     },
   ]);
+  return grid;
+}
+
+/**
+ * The grid as the rest of the app wants it: a flat list of classes, plus the
+ * batches the student may have to choose between.
+ *
+ * The batch is passed in rather than filtered later, because a session split
+ * by batch is also roomed by batch, and only the chosen one's room is theirs.
+ */
+export function fromGrid(
+  grid: TimetableGrid,
+  batch?: string | null,
+): TimetableExtraction {
+  const entries = gridToEntries(grid, { batch }).map((e) => ({ ...e, date: null }));
+  return {
+    entries,
+    batches: batchesIn(grid),
+    confidence: entries.length === 0 ? "low" : grid.confidence,
+    notes: grid.notes,
+  };
 }
 
 async function pdfToText(base64: string): Promise<string> {
@@ -208,7 +190,7 @@ async function callGroq(
   model: string,
   messages: Groq.Chat.Completions.ChatCompletionMessageParam[],
   attempt = 1,
-): Promise<TimetableExtraction> {
+): Promise<TimetableGrid> {
   let raw: string | null | undefined;
 
   try {
@@ -219,7 +201,7 @@ async function callGroq(
       max_completion_tokens: 8000,
       response_format: {
         type: "json_schema",
-        json_schema: { name: "timetable", schema: JSON_SCHEMA },
+        json_schema: { name: "timetable", schema: GRID_JSON_SCHEMA },
       },
     });
     raw = completion.choices[0]?.message?.content;
@@ -229,7 +211,7 @@ async function callGroq(
 
   if (!raw) throw new VisionError("The model returned nothing to read.");
 
-  const parsed = parseExtraction(raw);
+  const parsed = parseGrid(raw);
   if (parsed) return parsed;
 
   // Best-effort mode can return valid JSON in the wrong shape. One retry with
@@ -256,7 +238,7 @@ async function callGroq(
   );
 }
 
-function parseExtraction(raw: string): TimetableExtraction | null {
+function parseGrid(raw: string): TimetableGrid | null {
   // Some models still wrap JSON in a markdown fence despite being told not to.
   const cleaned = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
 
@@ -267,7 +249,7 @@ function parseExtraction(raw: string): TimetableExtraction | null {
     return null;
   }
 
-  const result = Extraction.safeParse(json);
+  const result = Grid.safeParse(json);
   return result.success ? result.data : null;
 }
 

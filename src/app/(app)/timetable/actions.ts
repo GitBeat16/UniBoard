@@ -8,9 +8,11 @@ import { parseIcs } from "@/lib/ics/parse";
 import {
   expandExtraction,
   extractTimetable,
+  fromGrid,
   SUPPORTED_IMAGE_TYPES,
   VisionError,
 } from "@/lib/ics/vision";
+import { batchesIn, Grid, type TimetableGrid } from "@/lib/ics/grid";
 import { extractModule, moduleKey, toneForIndex } from "@/lib/ics/module-map";
 import {
   addDays,
@@ -22,7 +24,16 @@ import {
 } from "@/lib/time/zone";
 import type { Enums, TablesInsert } from "@/lib/supabase/database.types";
 
-export type ActionState = { ok: boolean; message: string } | null;
+export type ActionState = {
+  ok: boolean;
+  message: string;
+  /**
+   * Set when the timetable splits practicals between batches and the student
+   * has not said which is theirs. The grid travels back with the question so
+   * answering it costs nothing — the photo is read once, not once per answer.
+   */
+  ask?: { batches: string[]; grid: string; weeks: number };
+} | null;
 
 const WEEKS_BACK = 8;
 const WEEKS_FORWARD = 26;
@@ -78,18 +89,41 @@ export async function importTimetable(
   // upload replaces what the last one put in the diary.
   let fromPhoto = false;
 
+  const batch = String(formData.get("batch") ?? "").trim() || null;
+  const answered = readGrid(formData.get("grid"));
+
   try {
-    if (file instanceof File && file.size > 0 && isVisionFile(file.type)) {
+    if (answered || (file instanceof File && file.size > 0 && isVisionFile(file.type))) {
       fromPhoto = true;
-      // ---- photo or PDF -> Claude reads the grid ----
-      if (file.size > MAX_UPLOAD) {
-        return { ok: false, message: "That file is too large (4 MB max)." };
+
+      // Either the photo is being read for the first time, or the student has
+      // just picked their batch and the grid has come back with the answer.
+      let grid: TimetableGrid;
+      if (answered) {
+        grid = answered;
+      } else {
+        const photo = file as File;
+        if (photo.size > MAX_UPLOAD) {
+          return { ok: false, message: "That file is too large (4 MB max)." };
+        }
+        const data = Buffer.from(await photo.arrayBuffer()).toString("base64");
+        grid = await extractTimetable({ data, mediaType: photo.type });
       }
 
-      const data = Buffer.from(await file.arrayBuffer()).toString("base64");
-      const extraction = await extractTimetable({ data, mediaType: file.type });
+      // Practicals split by batch: importing all four would fill the week with
+      // classes she does not attend, so ask before writing anything.
+      const batches = batchesIn(grid);
+      if (batches.length > 1 && (!batch || !batches.includes(batch))) {
+        return {
+          ok: false,
+          message: "This timetable is split into batches. Which one are you in?",
+          ask: { batches, grid: JSON.stringify(grid), weeks },
+        };
+      }
 
+      const extraction = fromGrid(grid, batch);
       incoming = expandExtraction(extraction, { weeks, from: new Date(), timeZone });
+      if (batch) notes.push(`batch ${batch} only`);
 
       if (extraction.confidence !== "high") {
         notes.push(
@@ -223,6 +257,19 @@ export async function importTimetable(
       `Imported ${sessionRows.length} classes across ${groups.size} modules` +
       (notes.length ? ` (${notes.join("; ")}).` : "."),
   };
+}
+
+/** The grid the batch question sent back, if this is the answer to it. */
+function readGrid(value: FormDataEntryValue | null): TimetableGrid | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  // It has been through the browser, so it is checked, not trusted.
+  if (value.length > 200_000) return null;
+  try {
+    const parsed = Grid.safeParse(JSON.parse(value));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

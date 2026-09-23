@@ -170,6 +170,26 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
 - **Groq's vision model takes images only.** PDFs go through `unpdf` text extraction
   first. A scanned PDF has no text layer, and that case is reported rather than silently
   returning an empty timetable.
+- **Ask the model for the grid, not for the classes.** A university timetable has merged
+  cells, break rows, and cells holding a different subject per batch. Asked for a list of
+  classes, the model quietly drops what it loses track of — a whole weekday can come back
+  with one hour on it. So it transcribes the grid instead, a row per time slot and a cell
+  per weekday, and `src/lib/ics/grid.ts` does the judging: merged runs, breaks, batch
+  labels, per-batch rooms, session types. An unreadable cell then arrives empty rather
+  than missing, and every rule is testable without a model — `grid.test.ts` and
+  `pipeline.test.ts` run the real PICT SY-III timetable end to end.
+- **Timetables print the afternoon on a 12-hour clock** ("12:45 to 01:45"). A faithful
+  transcription would file it at one in the morning, so `asDayOrder()` walks the rows
+  down the day and adds twelve hours to any that goes backwards.
+- **Batches are asked about, never guessed.** When the grid names more than one batch, the
+  import stops and offers them; the grid travels back with the question in a hidden field,
+  so answering costs no second call to the model. Lectures belong to everyone, practicals
+  only to the chosen batch, and a session split by batch is roomed by batch too.
+- **A class's `external_uid` must name its slot completely** — module, type, weekday and
+  both times. Postgres rejects an upsert whose batch names the same row twice, so a uid
+  that left out the weekday made any module meeting twice a week fail the whole import
+  with "ON CONFLICT DO UPDATE command cannot affect row a second time". The rows are also
+  keyed by uid before the upsert, as a second line of defence.
 - **Money is computed in the browser.** "Today", "this week" and "this month" are the
   student's local ones and the server runs in UTC, so `money/page.tsx` only fetches rows
   and `summarize()` (`src/lib/money/budget.ts`, pure and tested) runs on the client. The

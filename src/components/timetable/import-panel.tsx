@@ -243,20 +243,50 @@ export function ImportPanel({ compact = false }: { compact?: boolean }) {
 
       <AnimatePresence>
         {state && (
-          <motion.p
+          <motion.div
             key={state.message}
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.28, ease: EASE_SOFT }}
-            role="status"
-            className={cn(
-              "mt-4 text-label",
-              state.ok ? "text-leaf" : "text-coral",
-            )}
+            className="overflow-hidden"
           >
-            {state.message}
-          </motion.p>
+            <p
+              role="status"
+              className={cn(
+                "mt-4 text-label",
+                state.ok ? "text-leaf" : state.ask ? "text-ink" : "text-coral",
+              )}
+            >
+              {state.message}
+            </p>
+
+            {state.ask && (
+              // The photo has already been read: this form carries the grid
+              // back rather than making her upload it again.
+              <form action={importAction} className="mt-3 flex flex-wrap gap-2">
+                <TimeZoneField />
+                <input type="hidden" name="grid" value={state.ask.grid} />
+                <input type="hidden" name="weeks" value={state.ask.weeks} />
+                {state.ask.batches.map((b) => (
+                  <button
+                    key={b}
+                    type="submit"
+                    name="batch"
+                    value={b}
+                    disabled={importing}
+                    className="rounded-full bg-ink px-4 py-2 text-label font-semibold text-paper focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50"
+                  >
+                    {b}
+                  </button>
+                ))}
+                <p className="w-full px-1 text-caption text-muted">
+                  Lectures are everyone’s; only the practicals differ. Pick wrong
+                  and you can import again.
+                </p>
+              </form>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
     </Card>

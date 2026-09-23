@@ -19,12 +19,13 @@ const entry = (over: Partial<TimetableExtraction["entries"][number]> = {}) => ({
   startTime: "09:00",
   endTime: "10:50",
   room: "Bragg 1.05",
+  batches: null as string[] | null,
   ...over,
 });
 
 const extraction = (
   entries: TimetableExtraction["entries"],
-): TimetableExtraction => ({ entries, confidence: "high", notes: null });
+): TimetableExtraction => ({ entries, confidence: "high", notes: null, batches: [] });
 
 describe("expanding a weekly grid", () => {
   it("repeats an entry once per week", () => {
