@@ -431,6 +431,10 @@ export type Database = {
           credits: number | null
           id: string
           name: string
+          official_as_of: string | null
+          official_attended: number | null
+          official_held: number | null
+          official_source: string | null
           threshold: number | null
           user_id: string
         }
@@ -442,6 +446,10 @@ export type Database = {
           credits?: number | null
           id?: string
           name: string
+          official_as_of?: string | null
+          official_attended?: number | null
+          official_held?: number | null
+          official_source?: string | null
           threshold?: number | null
           user_id: string
         }
@@ -453,6 +461,10 @@ export type Database = {
           credits?: number | null
           id?: string
           name?: string
+          official_as_of?: string | null
+          official_attended?: number | null
+          official_held?: number | null
+          official_source?: string | null
           threshold?: number | null
           user_id?: string
         }

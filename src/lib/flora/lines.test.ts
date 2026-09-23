@@ -149,3 +149,44 @@ describe("money", () => {
     }
   });
 });
+
+describe("the college's own attendance figure", () => {
+  const base = { screen: "timetable" as const, hasTimetable: true };
+
+  it("asks for it before nagging about unmarked classes", () => {
+    // Importing it settles every unmarked class at once, so it comes first.
+    const out = floraSpeech({ ...base, hasOfficial: false, unmarkedCount: 8 });
+    expect(out?.text).toContain("your college publishes attendance");
+    expect(out?.action).toBe("point");
+  });
+
+  it("goes back to the unmarked nudge once the figure is in", () => {
+    const out = floraSpeech({ ...base, hasOfficial: true, officialAgeDays: 3, unmarkedCount: 8 });
+    expect(out?.text).toContain("unmarked");
+  });
+
+  it("says when the figure has gone stale", () => {
+    const out = floraSpeech({ ...base, hasOfficial: true, officialAgeDays: 30 });
+    expect(out?.text).toContain("4 weeks old");
+  });
+
+  it("leaves a fresh figure alone", () => {
+    const out = floraSpeech({ ...base, hasOfficial: true, officialAgeDays: 10 });
+    expect(out?.text).not.toContain("weeks old");
+  });
+
+  it("says where a below-threshold module stands, when the college said it", () => {
+    const out = floraSpeech({ ...base, hasOfficial: true, modulesBelow: 1 });
+    expect(out?.text).toContain("your college's count");
+  });
+
+  it("does not claim the college's count when there is none", () => {
+    const out = floraSpeech({ ...base, hasOfficial: false, modulesBelow: 1 });
+    expect(out?.text).not.toContain("college");
+  });
+
+  it("never asks for it before there is a timetable to match it to", () => {
+    const out = floraSpeech({ screen: "timetable", hasTimetable: false, hasOfficial: false });
+    expect(out?.text).toContain("timetable");
+  });
+});

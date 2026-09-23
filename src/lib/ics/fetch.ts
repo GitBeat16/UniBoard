@@ -31,7 +31,7 @@ function isBlockedAddress(address: string): boolean {
   return false;
 }
 
-async function assertPublicUrl(url: URL) {
+export async function assertPublicUrl(url: URL) {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new IcsFetchError("Only http and https calendar links are supported.");
   }
@@ -105,7 +105,7 @@ export async function fetchIcs(rawUrl: string): Promise<string> {
 }
 
 /** Content-Length can lie, so cap while streaming too. */
-async function readCapped(response: Response): Promise<string> {
+export async function readCapped(response: Response): Promise<string> {
   const reader = response.body?.getReader();
   if (!reader) return "";
 

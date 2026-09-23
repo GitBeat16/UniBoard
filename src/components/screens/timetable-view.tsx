@@ -10,11 +10,30 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { AttendanceSummary } from "@/components/timetable/attendance-summary";
 import { ImportPanel } from "@/components/timetable/import-panel";
 import { SessionCard } from "@/components/timetable/session-card";
+import { ClassSheet } from "@/components/timetable/class-sheet";
 import { WeekStrip, dayKey } from "@/components/timetable/week-strip";
 import { EASE_SOFT } from "@/lib/motion";
 import { useNow } from "@/lib/use-now";
 import type { ModuleAttendance } from "@/lib/attendance/stats";
 import type { SessionVM } from "@/lib/view-models";
+
+/**
+ * How old the freshest college figure is, in days.
+ *
+ * The newest one, because that is the one she last refreshed — an old figure
+ * on a module she has since dropped should not make the rest look stale.
+ */
+function officialAgeDays(modules: ModuleAttendance[], now: number) {
+  const dates = modules.map((m) => m.officialAsOf).filter((d): d is Date => d !== null);
+  if (dates.length === 0 || now === 0) return null;
+  const newest = Math.max(...dates.map((d) => d.getTime()));
+  return Math.max(0, Math.floor((now - newest) / 86_400_000));
+}
+
+/** Today on the viewer's calendar, as YYYY-MM-DD. */
+function todayKey() {
+  return dayKey(new Date());
+}
 
 function startOfWeek(d: Date) {
   const out = new Date(d);
@@ -41,6 +60,8 @@ export function TimetableView({
   const mounted = now > 0;
   const [weekOffset, setWeekOffset] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
+  // Which class the sheet is changing, or "new" when one is being added.
+  const [editing, setEditing] = useState<SessionVM | "new" | null>(null);
 
   const byDay = useMemo(() => {
     const map = new Map<string, SessionVM[]>();
@@ -97,6 +118,8 @@ export function TimetableView({
             modulesBelow: modules.filter((m) => m.status === "below").length,
             modulesAtRisk: modules.filter((m) => m.status === "thin").length,
             unmarkedCount: modules.reduce((n, m) => n + m.unmarked, 0),
+            hasOfficial: modules.some((m) => m.officialAsOf !== null),
+            officialAgeDays: officialAgeDays(modules, now),
             nothingOnToday: sessions.length > 0 && todays.length === 0,
           }}
         />
@@ -165,10 +188,22 @@ export function TimetableView({
                   ) : (
                     todays.map((s) => (
                       <Rise key={s.id}>
-                        <SessionCard session={s} now={now} />
+                        <SessionCard session={s} now={now} onEdit={() => setEditing(s)} />
                       </Rise>
                     ))
                   )}
+
+                  {/* A read timetable is never quite right, and a day gains a
+                      guest lecture now and then. */}
+                  <Rise>
+                    <button
+                      type="button"
+                      onClick={() => setEditing("new")}
+                      className="w-full rounded-tile border border-dashed border-hairline px-5 py-4 text-label font-semibold text-muted hover:border-ink hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                    >
+                      Add a class to this day
+                    </button>
+                  </Rise>
                 </Stagger>
               </AnimatePresence>
             </section>
@@ -177,7 +212,7 @@ export function TimetableView({
           </div>
 
           <div className="flex min-w-0 flex-col gap-8">
-          <AttendanceSummary modules={modules} />
+          <AttendanceSummary modules={modules} today={todayKey()} />
 
           <section>
             <h2 className="text-caption font-semibold uppercase text-muted">
@@ -190,6 +225,17 @@ export function TimetableView({
           </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {editing && (
+          <ClassSheet
+            session={editing === "new" ? undefined : editing}
+            dayKey={activeKey}
+            modules={modules}
+            onClose={() => setEditing(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

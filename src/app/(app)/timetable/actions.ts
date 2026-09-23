@@ -10,9 +10,17 @@ import {
   extractTimetable,
   fromGrid,
   SUPPORTED_IMAGE_TYPES,
-  VisionError,
 } from "@/lib/ics/vision";
 import { batchesIn, Grid, type TimetableGrid } from "@/lib/ics/grid";
+import { seriesIdFor, seriesKeyOf } from "@/lib/ics/series";
+import { matchRows } from "@/lib/attendance/match";
+import {
+  readAttendanceImage,
+  readAttendanceText,
+  type PortalReading,
+} from "@/lib/attendance/portal";
+import { fetchPageText, looksLikeSignIn } from "@/lib/attendance/fetch-page";
+import { GroqError } from "@/lib/groq/json";
 import { extractModule, moduleKey, toneForIndex } from "@/lib/ics/module-map";
 import {
   addDays,
@@ -20,6 +28,7 @@ import {
   wallTimeToInstant,
   wallToday,
   weekdayOf,
+  zonedParts,
   zoneOrFallback,
 } from "@/lib/time/zone";
 import type { Enums, TablesInsert } from "@/lib/supabase/database.types";
@@ -156,7 +165,9 @@ export async function importTimetable(
       if (parsed.truncated) notes.push("the feed was very large, so it was trimmed");
     }
   } catch (error) {
-    if (error instanceof IcsFetchError || error instanceof VisionError) {
+    // GroqError covers VisionError too, so a rejected key or a rate limit
+    // reaches her as itself rather than as "could not read that timetable".
+    if (error instanceof IcsFetchError || error instanceof GroqError) {
       return { ok: false, message: error.message };
     }
     return { ok: false, message: "Could not read that timetable." };
@@ -226,6 +237,9 @@ export async function importTimetable(
       byUid.set(s.uid, {
         user_id: user.id,
         module_id: moduleId,
+        // Every week of one slot shares a series, so "every week" can find
+        // them later without guessing from times.
+        series_id: seriesIdFor(user.id, seriesKeyOf(s.uid)),
         type: s.type,
         starts_at: s.start.toISOString(),
         ends_at: s.end.toISOString(),
@@ -257,6 +271,12 @@ export async function importTimetable(
       `Imported ${sessionRows.length} classes across ${groups.size} modules` +
       (notes.length ? ` (${notes.join("; ")}).` : "."),
   };
+}
+
+/** A YYYY-MM-DD day from the timetable, as a wall date. */
+function dayFromKey(key: string) {
+  const [year, month, day] = key.split("-").map(Number);
+  return { year, month, day };
 }
 
 /** The grid the batch question sent back, if this is the answer to it. */
@@ -307,7 +327,9 @@ const manualSchema = z.object({
   name: z.string().trim().min(2, "Give the module a name."),
   type: z.enum(["lecture", "lab", "seminar", "tutorial", "workshop", "other"]),
   room: z.string().trim().max(80).optional(),
-  weekday: z.coerce.number().int().min(0).max(6),
+  weekday: z.coerce.number().int().min(0).max(6).optional(),
+  /** A day picked on the timetable, when the class is being added to one. */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   start: z.string().regex(/^\d{2}:\d{2}$/, "Start time looks wrong."),
   end: z.string().regex(/^\d{2}:\d{2}$/, "End time looks wrong."),
   weeks: z.coerce.number().int().min(1).max(30),
@@ -329,6 +351,9 @@ export async function addManualClass(
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Check the form." };
   }
   const input = parsed.data;
+  if (input.weekday === undefined && !input.date) {
+    return { ok: false, message: "Say which day the class is on." };
+  }
 
   if (input.end <= input.start) {
     return { ok: false, message: "The class has to end after it starts." };
@@ -363,11 +388,14 @@ export async function addManualClass(
   const [sh, sm] = parseClock(input.start)!;
   const [eh, em] = parseClock(input.end)!;
 
-  // First occurrence: the next matching weekday on the student's calendar,
-  // today included. Built as wall-clock times in their zone — setHours() here
-  // would use the server's UTC clock and put a 09:00 class at 14:30 in Pune.
+  // First occurrence: the day she picked on the timetable, or the next
+  // matching weekday on her calendar, today included. Built as wall-clock
+  // times in her zone — setHours() here would use the server's UTC clock and
+  // put a 09:00 class at 14:30 in Pune.
   const today = wallToday(new Date(), timeZone);
-  const first = addDays(today, (input.weekday - weekdayOf(today) + 7) % 7);
+  const first = input.date
+    ? dayFromKey(input.date)
+    : addDays(today, ((input.weekday ?? weekdayOf(today)) - weekdayOf(today) + 7) % 7);
 
   const rows: TablesInsert<"class_sessions">[] = [];
   for (let w = 0; w < input.weeks; w++) {
@@ -392,7 +420,10 @@ export async function addManualClass(
 
   revalidatePath("/timetable");
   revalidatePath("/");
-  return { ok: true, message: `Added ${rows.length} classes.` };
+  return {
+    ok: true,
+    message: rows.length === 1 ? "Class added." : `Added ${rows.length} classes.`,
+  };
 }
 
 export async function markAttendance(
@@ -428,4 +459,304 @@ export async function markAttendance(
 
   revalidatePath("/timetable");
   revalidatePath("/");
+}
+
+const editSchema = z.object({
+  id: z.string().uuid(),
+  moduleId: z.string().uuid(),
+  type: z.enum(["lecture", "lab", "seminar", "tutorial", "workshop", "other"]),
+  start: z.string().regex(/^\d{2}:\d{2}$/, "Start time looks wrong."),
+  end: z.string().regex(/^\d{2}:\d{2}$/, "End time looks wrong."),
+  room: z.string().trim().max(80).optional(),
+  /** "one" is this class; "series" is this one and every later week of it. */
+  scope: z.enum(["one", "series"]).default("one"),
+  tz: z.string().optional(),
+});
+
+/**
+ * Change a class.
+ *
+ * A photographed timetable is read well but not perfectly, and a university
+ * moves a class now and then, so every class has to be correctable by hand —
+ * either this one instance or the whole weekly slot from here on.
+ *
+ * Earlier weeks are never touched. Attendance hangs off the classes that have
+ * already happened, and rewriting their times would quietly rewrite her record
+ * of the term.
+ */
+export async function updateClass(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "You need to be signed in." };
+
+  const parsed = editSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+  const input = parsed.data;
+  if (input.end <= input.start) {
+    return { ok: false, message: "The class has to end after it starts." };
+  }
+
+  const targets = await siblingsOf(supabase, user.id, input.id, input.scope);
+  if (targets.length === 0) return { ok: false, message: "That class is no longer there." };
+
+  // The module has to be the student's own: a Server Action is a public
+  // endpoint, and RLS scopes the row we write, not the row we point at.
+  const { data: module } = await supabase
+    .from("modules")
+    .select("id")
+    .eq("id", input.moduleId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!module) return { ok: false, message: "Pick a module from your own list." };
+
+  const timeZone = zoneOrFallback(input.tz);
+  const [sh, sm] = parseClock(input.start)!;
+  const [eh, em] = parseClock(input.end)!;
+
+  for (const target of targets) {
+    // Each week keeps its own date and takes the new wall-clock time, so a
+    // class moved to 11:00 is 11:00 in Pune every week, not 11:00 in UTC.
+    const on = zonedParts(new Date(target.starts_at), timeZone);
+    const day = { year: on.year, month: on.month, day: on.day };
+    const startsAt = wallTimeToInstant({ ...day, hour: sh, minute: sm }, timeZone);
+    const endsAt = wallTimeToInstant({ ...day, hour: eh, minute: em }, timeZone);
+
+    const { error } = await supabase
+      .from("class_sessions")
+      .update({
+        module_id: input.moduleId,
+        type: input.type,
+        room: input.room || null,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+      })
+      .eq("id", target.id)
+      .eq("user_id", user.id);
+    if (error) return { ok: false, message: error.message };
+  }
+
+  revalidatePath("/timetable");
+  revalidatePath("/");
+  return {
+    ok: true,
+    message: targets.length === 1 ? "Class updated." : `Updated ${targets.length} weeks.`,
+  };
+}
+
+/** Remove a class, or the whole weekly slot from this week on. */
+export async function deleteClass(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "You need to be signed in." };
+
+  const id = String(formData.get("id") ?? "");
+  const scope = formData.get("scope") === "series" ? "series" : "one";
+  if (!z.string().uuid().safeParse(id).success) {
+    return { ok: false, message: "That class is no longer there." };
+  }
+
+  const targets = await siblingsOf(supabase, user.id, id, scope);
+  if (targets.length === 0) return { ok: false, message: "That class is no longer there." };
+
+  const { error } = await supabase
+    .from("class_sessions")
+    .delete()
+    .eq("user_id", user.id)
+    .in("id", targets.map((t) => t.id));
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/timetable");
+  revalidatePath("/");
+  return {
+    ok: true,
+    message: targets.length === 1 ? "Class removed." : `Removed ${targets.length} weeks.`,
+  };
+}
+
+/**
+ * The classes an edit applies to: just this one, or this one and every later
+ * week of the same slot.
+ *
+ * A slot is normally a series id, set at import. Anything older than that —
+ * or typed in before series ids existed — is matched on what makes a slot a
+ * slot: same module, same type, same weekday, same time of day.
+ */
+async function siblingsOf(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  id: string,
+  scope: "one" | "series",
+) {
+  const { data: session } = await supabase
+    .from("class_sessions")
+    .select("id, module_id, type, series_id, starts_at")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!session) return [];
+  if (scope === "one") return [session];
+
+  const query = supabase
+    .from("class_sessions")
+    .select("id, module_id, type, series_id, starts_at")
+    .eq("user_id", userId)
+    .gte("starts_at", session.starts_at);
+
+  const { data: later } = session.series_id
+    ? await query.eq("series_id", session.series_id)
+    : await query.eq("module_id", session.module_id).eq("type", session.type);
+
+  if (session.series_id) return later ?? [session];
+
+  // Without a series id, keep only the ones on the same weekday at the same
+  // time — the same slot, week after week.
+  const at = new Date(session.starts_at);
+  return (later ?? []).filter((s) => {
+    const d = new Date(s.starts_at);
+    return d.getUTCDay() === at.getUTCDay() && d.getUTCHours() === at.getUTCHours()
+      && d.getUTCMinutes() === at.getUTCMinutes();
+  });
+}
+
+/**
+ * Import the college's own attendance figures.
+ *
+ * The app can only count the classes it knows about, which starts the day the
+ * timetable is imported. The college has been counting since the term began,
+ * and its number is the one that decides whether she sits the exam — so it is
+ * taken as the opening balance, and everything marked after that day is added
+ * to it.
+ *
+ * A portal page is behind a login, so a screenshot is the route that works. A
+ * link is accepted too, and says so honestly when it lands on a sign-in page.
+ */
+export async function importAttendance(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "You need to be signed in." };
+
+  const file = formData.get("file");
+  const url = String(formData.get("url") ?? "").trim();
+  const asOfRaw = String(formData.get("asOf") ?? "").trim();
+  const timeZone = zoneOrFallback(formData.get("tz"));
+
+  const asOf = /^\d{4}-\d{2}-\d{2}$/.test(asOfRaw) ? asOfRaw : todayIn(timeZone);
+  if (asOf > todayIn(timeZone)) {
+    return { ok: false, message: "That date is in the future." };
+  }
+
+  const { data: modules, error: modulesError } = await supabase
+    .from("modules")
+    .select("id, name, code");
+  if (modulesError) return { ok: false, message: modulesError.message };
+  if (!modules || modules.length === 0) {
+    return { ok: false, message: "Import your timetable first, so there is something to match to." };
+  }
+
+  let reading: PortalReading;
+  let source: string;
+  try {
+    if (file instanceof File && file.size > 0) {
+      if (!isVisionFile(file.type)) {
+        return { ok: false, message: "Upload a screenshot of the attendance page." };
+      }
+      if (file.size > MAX_UPLOAD) {
+        return { ok: false, message: "That file is too large (4 MB max)." };
+      }
+      const data = Buffer.from(await file.arrayBuffer()).toString("base64");
+      reading = await readAttendanceImage({ data, mediaType: file.type });
+      source = "photo";
+    } else if (url) {
+      const text = await fetchPageText(url);
+      if (looksLikeSignIn(text)) {
+        return {
+          ok: false,
+          message:
+            "That link asked us to sign in, so there were no figures on it. A screenshot of the page works.",
+        };
+      }
+      reading = await readAttendanceText(text);
+      source = "link";
+    } else {
+      return { ok: false, message: "Upload a screenshot, or paste a link to the page." };
+    }
+  } catch (error) {
+    if (error instanceof IcsFetchError || error instanceof GroqError) {
+      return { ok: false, message: error.message };
+    }
+    return { ok: false, message: "Could not read that attendance page." };
+  }
+
+  const targets = modules.map((m) => ({ moduleId: m.id, name: m.name, code: m.code }));
+  const { matched, unmatched } = matchRows(reading.rows, targets);
+
+  if (matched.length === 0) {
+    return {
+      ok: false,
+      message:
+        reading.rows.length === 0
+          ? "No attendance figures on that page. It needs the counts, not just percentages."
+          : "None of those subjects matched your modules. Rename a module to match the portal and try again.",
+    };
+  }
+
+  // The page may carry its own date; the student's answer wins over ours only
+  // when they gave one.
+  const effective = asOfRaw ? asOf : /^\d{4}-\d{2}-\d{2}$/.test(reading.asOf ?? "") ? reading.asOf! : asOf;
+
+  for (const m of matched) {
+    const { error } = await supabase
+      .from("modules")
+      .update({
+        official_attended: m.attended,
+        official_held: m.held,
+        official_as_of: effective,
+        official_source: source,
+      })
+      .eq("id", m.moduleId)
+      .eq("user_id", user.id);
+    if (error) return { ok: false, message: error.message };
+  }
+
+  revalidatePath("/timetable");
+  revalidatePath("/");
+
+  const notes: string[] = [];
+  if (unmatched.length > 0) {
+    notes.push(`no module matched ${unmatched.map((r) => r.subject).join(", ")}`);
+  }
+  if (reading.confidence !== "high") {
+    notes.push(`read with ${reading.confidence} confidence — worth a check`);
+  }
+  if (reading.notes) notes.push(reading.notes);
+
+  return {
+    ok: true,
+    message:
+      `Took ${matched.length} ${matched.length === 1 ? "subject" : "subjects"} from your college, as of ${effective}` +
+      (notes.length ? ` (${notes.join("; ")}).` : "."),
+  };
+}
+
+/** Today on the student's calendar, as YYYY-MM-DD. */
+function todayIn(timeZone: string) {
+  const d = wallToday(new Date(), timeZone);
+  return `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`;
 }

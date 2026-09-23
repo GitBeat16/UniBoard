@@ -22,9 +22,12 @@ const STATUS_LABEL: Partial<Record<Enums<"attendance_status">, string>> = {
 export function SessionCard({
   session,
   now,
+  onEdit,
 }: {
   session: SessionVM;
   now: number;
+  /** Opens the sheet that changes or removes this class. */
+  onEdit?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const started = new Date(session.startsAt).getTime() <= now;
@@ -56,15 +59,27 @@ export function SessionCard({
           </p>
         </div>
 
-        <span
-          className={cn(
-            "shrink-0 rounded-chip px-3 py-1 text-caption font-semibold uppercase",
-            toneSoft[session.tone],
-            toneText[session.tone],
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            className={cn(
+              "rounded-chip px-3 py-1 text-caption font-semibold uppercase",
+              toneSoft[session.tone],
+              toneText[session.tone],
+            )}
+          >
+            {session.code ?? SESSION_TYPE_LABEL[session.type]}
+          </span>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label={`Change ${session.moduleName}`}
+              className="grid size-9 place-items-center rounded-full text-muted hover:bg-canvas hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            >
+              <IconPencil className="size-4" />
+            </button>
           )}
-        >
-          {session.code ?? SESSION_TYPE_LABEL[session.type]}
-        </span>
+        </div>
       </div>
 
       {(session.isAssessed || session.hasSubmission) && (
@@ -192,6 +207,25 @@ function Tick() {
   return (
     <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="m5 12.6 4.4 4.3L19 6.9" />
+    </svg>
+  );
+}
+
+/** A nib, for changing what the timetable got wrong. */
+function IconPencil({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 20.2c-.2-1.1.2-2.6.6-3.6L15.1 6.1c.6-.6 1.5-.6 2.1 0l1.4 1.3c.6.6.7 1.6.1 2.2L8.1 20.2c-1 .4-2.5.7-3.6.6Z" />
+      <path d="m13.6 7.7 3.4 3.3" />
     </svg>
   );
 }

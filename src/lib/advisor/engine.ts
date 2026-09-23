@@ -238,6 +238,16 @@ function buildReasons(input: AdvisorInput, f: AdvisorResult["factors"]): Reason[
   }
 
   if (attendance.percent !== null) {
+    // Where the number came from changes how much weight it deserves in her
+    // head: a figure carried forward from the college's own record is the one
+    // the exam hall will use, so it is named as such.
+    if (attendance.officialAsOf) {
+      reasons.push({
+        side: "context",
+        text: `Counted from your college's own record, up to ${formatDay(attendance.officialAsOf)}.`,
+        weight: 0.3,
+      });
+    }
     if (attendance.canMissMore <= 0) {
       reasons.push({
         side: "go",
@@ -330,3 +340,8 @@ export const VERDICT_COPY: Record<Verdict, { headline: string; sub: string }> = 
   your_call: { headline: "Your call", sub: "Genuinely balanced. Here is both sides." },
   skip_fine: { headline: "Skipping is fine today", sub: "You have the room, and something else needs you more." },
 };
+
+/** "20 Sep", in the reader's locale. */
+function formatDay(date: Date) {
+  return date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}

@@ -6,8 +6,14 @@ import {
   weekdayOf,
   type WallDate,
 } from "@/lib/time/zone";
-import Groq from "groq-sdk";
 import { extractText, getDocumentProxy } from "unpdf";
+import {
+  askGroqJson,
+  GroqError,
+  groqClient,
+  TEXT_MODEL,
+  VISION_MODEL,
+} from "@/lib/groq/json";
 import type { Enums } from "@/lib/supabase/database.types";
 import {
   batchesIn,
@@ -37,11 +43,6 @@ import {
  * parsed and validated here, with one retry, rather than trusted.
  */
 
-/** The only Groq model that accepts images. */
-const VISION_MODEL = "qwen/qwen3.8-27b";
-/** Used for the text extracted out of a PDF. */
-const TEXT_MODEL = "openai/gpt-oss-120b";
-
 /** Below this many characters a PDF is almost certainly scanned, not digital. */
 const MIN_PDF_TEXT = 120;
 
@@ -54,7 +55,8 @@ export const SUPPORTED_IMAGE_TYPES = [
 
 export const VISION_ACCEPT = [...SUPPORTED_IMAGE_TYPES, "application/pdf"].join(",");
 
-export class VisionError extends Error {}
+/** A reading failure, as opposed to a fetching one. */
+export class VisionError extends GroqError {}
 
 /**
  * A timetable once it has been read: the classes themselves, and the batches
@@ -111,35 +113,41 @@ export async function extractTimetable({
   data: string;
   mediaType: string;
 }): Promise<TimetableGrid> {
-  if (!process.env.GROQ_API_KEY) {
-    throw new VisionError(
-      "Reading images and PDFs needs a GROQ_API_KEY in .env.local. A calendar link or .ics file works without one.",
-    );
-  }
-
-  const client = new Groq();
+  const client = groqClient();
 
   if (mediaType === "application/pdf") {
     const text = await pdfToText(data);
-    const grid = await callGroq(client, TEXT_MODEL, [
-      { role: "system", content: SYSTEM },
-      { role: "user", content: `Transcribe this timetable grid.\n\n${text}` },
-    ]);
-    return grid;
+    return askGroqJson({
+      client,
+      model: TEXT_MODEL,
+      schema: Grid,
+      jsonSchema: GRID_JSON_SCHEMA,
+      name: "timetable",
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: `Transcribe this timetable grid.\n\n${text}` },
+      ],
+    });
   }
 
-  const grid = await callGroq(client, VISION_MODEL, [
-    { role: "system", content: SYSTEM },
-    {
-      role: "user",
-      content: [
-        { type: "text", text: "Transcribe this timetable grid." },
-        // Groq takes local images as a base64 data URL.
-        { type: "image_url", image_url: { url: `data:${mediaType};base64,${data}` } },
-      ],
-    },
-  ]);
-  return grid;
+  return askGroqJson({
+    client,
+    model: VISION_MODEL,
+    schema: Grid,
+    jsonSchema: GRID_JSON_SCHEMA,
+    name: "timetable",
+    messages: [
+      { role: "system", content: SYSTEM },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Transcribe this timetable grid." },
+          // Groq takes local images as a base64 data URL.
+          { type: "image_url", image_url: { url: `data:${mediaType};base64,${data}` } },
+        ],
+      },
+    ],
+  });
 }
 
 /**
@@ -183,93 +191,6 @@ async function pdfToText(base64: string): Promise<string> {
   }
 
   return text.slice(0, 40_000);
-}
-
-async function callGroq(
-  client: Groq,
-  model: string,
-  messages: Groq.Chat.Completions.ChatCompletionMessageParam[],
-  attempt = 1,
-): Promise<TimetableGrid> {
-  let raw: string | null | undefined;
-
-  try {
-    const completion = await client.chat.completions.create({
-      model,
-      messages,
-      temperature: 0,
-      max_completion_tokens: 8000,
-      response_format: {
-        type: "json_schema",
-        json_schema: { name: "timetable", schema: GRID_JSON_SCHEMA },
-      },
-    });
-    raw = completion.choices[0]?.message?.content;
-  } catch (error) {
-    throw asVisionError(error);
-  }
-
-  if (!raw) throw new VisionError("The model returned nothing to read.");
-
-  const parsed = parseGrid(raw);
-  if (parsed) return parsed;
-
-  // Best-effort mode can return valid JSON in the wrong shape. One retry with
-  // the failure pointed out is cheap and usually enough.
-  if (attempt === 1) {
-    return callGroq(
-      client,
-      model,
-      [
-        ...messages,
-        { role: "assistant", content: raw },
-        {
-          role: "user",
-          content:
-            "That did not match the required schema. Return only the JSON object, with every required field present.",
-        },
-      ],
-      2,
-    );
-  }
-
-  throw new VisionError(
-    "Could not read a timetable out of that file. A straight-on, uncropped image reads best.",
-  );
-}
-
-function parseGrid(raw: string): TimetableGrid | null {
-  // Some models still wrap JSON in a markdown fence despite being told not to.
-  const cleaned = raw.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-
-  let json: unknown;
-  try {
-    json = JSON.parse(cleaned);
-  } catch {
-    return null;
-  }
-
-  const result = Grid.safeParse(json);
-  return result.success ? result.data : null;
-}
-
-function asVisionError(error: unknown): VisionError {
-  if (error instanceof Groq.AuthenticationError) {
-    return new VisionError("That GROQ_API_KEY was rejected.");
-  }
-  if (error instanceof Groq.RateLimitError) {
-    return new VisionError("Groq rate limited the request. Try again shortly.");
-  }
-  if (error instanceof Groq.BadRequestError) {
-    return new VisionError(`Groq rejected the request: ${error.message}`);
-  }
-  if (error instanceof Groq.APIConnectionError) {
-    return new VisionError("Could not reach Groq.");
-  }
-  if (error instanceof Groq.APIError) {
-    return new VisionError(`Groq returned ${error.status}.`);
-  }
-  return new VisionError("Could not read that file.");
 }
 
 export type ExpandedSession = {

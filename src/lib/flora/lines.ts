@@ -31,6 +31,10 @@ export type FloraContext = {
   overdueCount?: number;
   dueTodayCount?: number;
   unmarkedCount?: number;
+  /** Whether any module carries the college's own attendance figure. */
+  hasOfficial?: boolean;
+  /** Days since the newest college figure, when there is one. */
+  officialAgeDays?: number | null;
   minutesToNextClass?: number | null;
   nothingOnToday?: boolean;
   goalCount?: number;
@@ -67,12 +71,15 @@ export function floraSpeech(ctx: FloraContext): FloraSpeech | null {
 
   // --- Things that are actually wrong, hardest first ----------------------
   if (ctx.modulesBelow && ctx.modulesBelow > 0) {
+    // On the college's own count this is not a warning about her habits, it is
+    // where she actually stands, so it is said more plainly.
+    const source = ctx.hasOfficial ? " on your college's count" : "";
     return {
       mood: "worried",
       text:
         ctx.modulesBelow === 1
-          ? "One module has slipped under its threshold. Worth a look."
-          : `${ctx.modulesBelow} modules have slipped under their threshold.`,
+          ? `One module has slipped under its threshold${source}. Worth a look.`
+          : `${ctx.modulesBelow} modules have slipped under their threshold${source}.`,
     };
   }
 
@@ -153,6 +160,24 @@ export function floraSpeech(ctx: FloraContext): FloraSpeech | null {
     return {
       mood: "neutral",
       text: "Pop your timetable in and I can start doing something useful.",
+      action: "point",
+    };
+  }
+
+  // Before nagging about unmarked classes: the college's own figure settles
+  // all of them at once, and it is the number that decides the exam hall.
+  if (ctx.hasTimetable && ctx.hasOfficial === false) {
+    return {
+      mood: "neutral",
+      text: "If your college publishes attendance, bring its figure in — then my maths starts from theirs.",
+      action: "point",
+    };
+  }
+
+  if (ctx.hasOfficial && typeof ctx.officialAgeDays === "number" && ctx.officialAgeDays > 21) {
+    return {
+      mood: "thinking",
+      text: `Your college's figure is ${Math.round(ctx.officialAgeDays / 7)} weeks old now. Worth taking a fresh one.`,
       action: "point",
     };
   }

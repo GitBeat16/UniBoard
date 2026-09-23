@@ -21,6 +21,7 @@ function attendance(over: Partial<ModuleAttendance> = {}): ModuleAttendance {
     percent: 92.3,
     canMissMore: 5,
     status: "safe",
+  officialAsOf: null,
     ...over,
   };
 }

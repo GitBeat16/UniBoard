@@ -40,6 +40,7 @@ export function HomeView({
   nextSessionLive = false,
   atRisk = 0,
   modulesBelow = 0,
+  hasOfficial,
   overdueCount = 0,
   dueTodayCount = 0,
   minutesToNextClass = null,
@@ -51,6 +52,8 @@ export function HomeView({
   nextSessionLive?: boolean;
   atRisk?: number;
   modulesBelow?: number;
+  /** Whether the college's own attendance figure has been imported. */
+  hasOfficial?: boolean;
   overdueCount?: number;
   dueTodayCount?: number;
   minutesToNextClass?: number | null;
@@ -87,6 +90,7 @@ export function HomeView({
               hasTimetable: nextSession !== null,
               modulesBelow,
               modulesAtRisk: atRisk,
+              hasOfficial,
               overdueCount,
               dueTodayCount,
               minutesToNextClass,

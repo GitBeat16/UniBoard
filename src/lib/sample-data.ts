@@ -94,6 +94,7 @@ export const sampleStats: ModuleAttendance[] = [
     percent: 62.5,
     canMissMore: 0,
     status: "below",
+  officialAsOf: null,
   },
   {
     moduleId: "m1",
@@ -109,6 +110,7 @@ export const sampleStats: ModuleAttendance[] = [
     percent: 81.8,
     canMissMore: 2,
     status: "thin",
+  officialAsOf: null,
   },
   {
     moduleId: "m3",
@@ -124,6 +126,7 @@ export const sampleStats: ModuleAttendance[] = [
     percent: 92.3,
     canMissMore: 5,
     status: "safe",
+  officialAsOf: null,
   },
 ];
 

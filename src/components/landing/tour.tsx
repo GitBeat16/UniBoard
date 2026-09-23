@@ -46,7 +46,7 @@ const SCENES: Record<
     node: (
       <div className="flex flex-col gap-8">
         <SectionHeading light="Your week," bold="at a glance" />
-        <AttendanceSummary modules={sampleStats} />
+        <AttendanceSummary modules={sampleStats} today="2026-09-24" />
       </div>
     ),
   },

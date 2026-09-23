@@ -178,6 +178,24 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
   labels, per-batch rooms, session types. An unreadable cell then arrives empty rather
   than missing, and every rule is testable without a model — `grid.test.ts` and
   `pipeline.test.ts` run the real PICT SY-III timetable end to end.
+- **The timetable must be correctable by hand.** A read grid is close, never
+  exact, and colleges move classes. Every class opens a sheet that can change
+  its module, kind, room and times, or remove it — for that one class or for
+  every later week of the same slot, which is what `series_id` is for
+  (`src/lib/ics/series.ts` derives it from the slot, so a re-import lands on the
+  same series instead of splitting it). Weeks already gone are never touched:
+  attendance hangs off them.
+- **The college's attendance figure beats ours.** The app can only count
+  classes it knows about, which starts at import; the college has been counting
+  since the term began, and its number decides who sits the exam. So it is
+  imported (screenshot, or a link when the page is public) into
+  `modules.official_*` as a dated baseline, and `moduleAttendance()` treats it
+  as the opening balance — classes on or before that day are skipped entirely,
+  so nothing is counted twice, and only what is marked after it is added.
+  `src/lib/attendance/match.ts` maps portal subjects to modules by code, name,
+  initials and whole-word containment, and refuses to guess when two modules
+  fit. Portals sit behind a login, so the link route says so plainly rather
+  than letting a model invent numbers off a sign-in page.
 - **Timetables print the afternoon on a 12-hour clock** ("12:45 to 01:45"). A faithful
   transcription would file it at one in the morning, so `asDayOrder()` walks the rows
   down the day and adds twelve hours to any that goes backwards.

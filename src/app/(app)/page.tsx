@@ -1,5 +1,5 @@
 import { HomeView } from "@/components/screens/home-view";
-import { moduleAttendance } from "@/lib/attendance/stats";
+import { moduleAttendance, officialOf } from "@/lib/attendance/stats";
 import { urgencyOf, type WorkItem } from "@/lib/work/urgency";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAll } from "@/lib/supabase/fetch-all";
@@ -30,7 +30,7 @@ export default async function HomePage() {
         .select("display_name, attendance_threshold, university_profiles(attendance_threshold)")
         .eq("id", user!.id)
         .single(),
-      supabase.from("modules").select("id, name, code, color_token, threshold"),
+      supabase.from("modules").select("id, name, code, color_token, threshold, official_attended, official_held, official_as_of"),
       fetchAll((from, to) =>
         supabase
           .from("class_sessions")
@@ -94,6 +94,7 @@ export default async function HomePage() {
             profile?.university_profiles?.attendance_threshold ??
             DEFAULT_THRESHOLD,
         ),
+        official: officialOf(m),
         sessions: (sessions ?? [])
           .filter((s) => s.module_id === m.id)
           .map((s) => ({
@@ -151,6 +152,7 @@ export default async function HomePage() {
       nextSessionLive={isLive}
       atRisk={atRisk}
       modulesBelow={modulesBelow}
+      hasOfficial={(modules ?? []).some((m) => m.official_as_of !== null)}
       overdueCount={overdueCount}
       dueTodayCount={dueTodayCount}
       minutesToNextClass={minutesToNextClass}

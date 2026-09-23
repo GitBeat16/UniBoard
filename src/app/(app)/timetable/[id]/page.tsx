@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { AdvisorView, type AdvisorPayload } from "@/components/advisor/advisor-view";
-import { moduleAttendance } from "@/lib/attendance/stats";
+import { moduleAttendance, officialOf } from "@/lib/attendance/stats";
 import { createClient } from "@/lib/supabase/server";
 import { loadBoardBusy } from "@/lib/board/busy";
 import { fetchAll } from "@/lib/supabase/fetch-all";
@@ -30,7 +30,7 @@ export default async function AdvisorPage({
     await Promise.all([
       supabase
         .from("modules")
-        .select("id, name, code, color_token, threshold")
+        .select("id, name, code, color_token, threshold, official_attended, official_held, official_as_of")
         .eq("id", session.module_id)
         .single(),
       fetchAll((from, to) =>
@@ -79,6 +79,7 @@ export default async function AdvisorPage({
       code: module.code,
       colorToken: module.color_token,
       threshold,
+      official: officialOf(module),
       sessions: (siblings ?? []).map((s) => ({
         startsAt: new Date(s.starts_at),
         status: statusBySession.get(s.id) ?? null,

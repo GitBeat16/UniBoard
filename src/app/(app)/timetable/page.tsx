@@ -1,5 +1,5 @@
 import { TimetableView } from "@/components/screens/timetable-view";
-import { moduleAttendance, type ModuleAttendance } from "@/lib/attendance/stats";
+import { moduleAttendance, officialOf, type ModuleAttendance } from "@/lib/attendance/stats";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAll } from "@/lib/supabase/fetch-all";
 import { asTone } from "@/lib/tones";
@@ -12,7 +12,7 @@ export default async function TimetablePage() {
 
   const [{ data: modules }, { data: sessions }, { data: records }, { data: profile }] =
     await Promise.all([
-      supabase.from("modules").select("id, name, code, color_token, threshold"),
+      supabase.from("modules").select("id, name, code, color_token, threshold, official_attended, official_held, official_as_of"),
       fetchAll((from, to) =>
         supabase
           .from("class_sessions")
@@ -74,6 +74,7 @@ export default async function TimetablePage() {
           code: m.code,
           colorToken: m.color_token,
           threshold: Number(m.threshold ?? uniThreshold),
+          official: officialOf(m),
           sessions: (sessions ?? [])
             .filter((s) => s.module_id === m.id)
             .map((s) => ({

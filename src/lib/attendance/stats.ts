@@ -9,6 +9,15 @@ export type StatsInput = {
   colorToken: string;
   threshold: number; // percent, e.g. 75
   sessions: Array<{ startsAt: Date; status: AttendanceStatus | null }>;
+  /**
+   * What the college itself counted, and the day it counted it.
+   *
+   * The app only knows about classes since the timetable was imported; the
+   * college has been counting since the term began, and its figure is the one
+   * that decides whether she sits the exam. When it is here, it is the
+   * starting point and only classes after that day are added to it.
+   */
+  official?: { attended: number; held: number; asOf: Date } | null;
 };
 
 export type ModuleAttendance = {
@@ -29,6 +38,8 @@ export type ModuleAttendance = {
   /** How many of the remaining sessions can still be missed. */
   canMissMore: number;
   status: "safe" | "thin" | "below" | "unknown";
+  /** The day the college's own count was taken, when one has been imported. */
+  officialAsOf: Date | null;
 };
 
 /**
@@ -39,8 +50,13 @@ export type ModuleAttendance = {
  * how universities normally treat them.
  */
 export function moduleAttendance(input: StatsInput, now: Date): ModuleAttendance {
-  let attended = 0;
-  let missed = 0;
+  const official = input.official ?? null;
+
+  // The college's figure is the opening balance; everything it already counted
+  // is behind us, so only classes after that day are added to it. Counting
+  // them twice would be worse than not counting them at all.
+  let attended = official?.attended ?? 0;
+  let missed = official ? official.held - official.attended : 0;
   let unmarked = 0;
   let remaining = 0;
 
@@ -51,6 +67,7 @@ export function moduleAttendance(input: StatsInput, now: Date): ModuleAttendance
       remaining++;
       continue;
     }
+    if (official && s.startsAt <= official.asOf) continue;
 
     switch (s.status) {
       case "present":
@@ -101,6 +118,7 @@ export function moduleAttendance(input: StatsInput, now: Date): ModuleAttendance
     percent,
     canMissMore,
     status,
+    officialAsOf: official?.asOf ?? null,
   };
 }
 
@@ -112,5 +130,31 @@ export function overallAttendance(modules: ModuleAttendance[]) {
     held,
     percent: held === 0 ? null : (attended / held) * 100,
     atRisk: modules.filter((m) => m.status === "below" || m.status === "thin").length,
+  };
+}
+
+/**
+ * The college's figure off a module row, if one has been imported.
+ *
+ * A date column comes back as "2026-09-20" with no time, and a class marked on
+ * that same day was part of what the college counted — so the cut-off is the
+ * end of that day, not its start.
+ */
+export function officialOf(module: {
+  official_attended: number | null;
+  official_held: number | null;
+  official_as_of: string | null;
+}) {
+  if (
+    module.official_attended === null ||
+    module.official_held === null ||
+    module.official_as_of === null
+  ) {
+    return null;
+  }
+  return {
+    attended: module.official_attended,
+    held: module.official_held,
+    asOf: new Date(`${module.official_as_of}T23:59:59`),
   };
 }
