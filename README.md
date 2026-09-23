@@ -93,13 +93,13 @@ npm run dev
 | `npm run lint` | eslint |
 | `npm test` | vitest — advisor guardrails, urgency, Flora, Reclaim, ICS writing (65 tests) |
 | `/preview` | design gallery of every screen, no data, dev-only |
-| `/preview/wide` | the same screens at tablet (820px) and laptop (1280px) widths |
 | `npm run db:types` | regenerate `src/lib/supabase/database.types.ts` (needs the Supabase CLI) |
 
 ## Layout
 
 ```
-src/app/(app)/           authenticated shell — bottom nav, phone-width column
+src/app/welcome/         the public landing page — what UniBoard is, and the tour video
+src/app/(app)/           authenticated shell — bottom nav on phones, sidebar on laptops
 src/app/sign-in/         magic-link sign-in
 src/app/auth/            callback + sign-out route handlers
 src/components/flora/    Flora, the guide — character + speech bubble
@@ -203,15 +203,20 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
   `.card-polaroid`, `.card-tag` and `.card-torn`, all reading the card's colour from
   `--tone`. Shapes that use `clip-path` lose `box-shadow`, so the shadow is a
   `drop-shadow` on the wrapper (`.card-hang`). Text never sits directly on the felt.
-- **Screens lay out by the space they get, not the window.** The shell switches on the
-  viewport — bottom bar on phones and tablets, `SideNav` from `lg` — but `<main>` is a CSS
-  container and every screen uses container variants (`@2xl:` two columns, `@4xl:` the
-  Board's sidebar). That is why the same component is right in the app, beside the
-  sidebar, and in the `/preview` phone frames. Check all three widths at `/preview/wide`.
-  Where desktop groups things differently from the phone's order, the column wrappers
-  are `display: contents` below the breakpoint and children carry `order-*`.
-- **Never animate a full-width strip sideways to move a marker.** A translated element
-  still takes up space past the edge, and a phone will scroll the whole screen sideways.
-  Move the marker itself (`left`), as `VerdictGauge` does.
+- **The landing page is the front door.** A signed-out visitor at `/` is sent to
+  `/welcome`, not to the sign-in form; a deep link to a signed-in screen still goes to
+  `/sign-in`. `/welcome` and `/media` are public paths in `src/lib/supabase/middleware.ts`.
+- **The tour video is a recording of the real app**, not a mock-up: `/preview/tour`
+  (dev only) plays the screens in `src/lib/tour.ts` with sample data, and Playwright
+  records it at 2× into `public/media/uniboard-tour.{mp4,webm}` plus a poster frame.
+  Re-record: start `next dev`, capture `/preview/tour` at 780×1688 for one full loop,
+  trim to the loop, then run `node tools/measure-tour.mjs` and paste the numbers into
+  `TOUR_VIDEO` in `src/lib/tour.ts`. Those chapter marks are MEASURED, never computed:
+  a screen rendering for the first time costs real seconds, so the recording runs longer
+  than the script, and the landing page's chapters have to match the file.
+- **The logo is the product in miniature** — a felt board with one pinned card
+  (`src/components/brand/logo.tsx`). It animates once on mount and again on hover, and
+  stops moving entirely under `prefers-reduced-motion`. `src/app/icon.svg` is the same
+  mark, still, for the browser tab.
 - **Light mode only**, by decision. The design is built on white (PLAN.md §8).
 # UniBoard

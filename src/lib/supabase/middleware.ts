@@ -6,6 +6,8 @@ import type { Database } from "./database.types";
 // no session read, and 404 outside development. Nothing behind the guard is
 // reachable through it.
 const PUBLIC_PATHS = [
+  "/welcome",
+  "/media",
   "/sign-in",
   "/auth",
   "/preview",
@@ -49,7 +51,9 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
-    url.pathname = "/sign-in";
+    // A visitor arriving at the root meets the landing page; a deep link to
+    // a signed-in screen goes straight to sign-in.
+    url.pathname = pathname === "/" ? "/welcome" : "/sign-in";
     return NextResponse.redirect(url);
   }
 

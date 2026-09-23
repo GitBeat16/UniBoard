@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId } from "react";
 import { motion } from "motion/react";
+import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/cn";
 import { LAYOUT_SPRING } from "@/lib/motion";
 import { isActive, tabs } from "./bottom-nav";
@@ -27,10 +28,9 @@ export function SideNav({ className }: { className?: string }) {
     >
       <Link
         href="/"
-        className="rounded-chip px-2 pb-6 pt-1 text-h2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+        className="rounded-chip px-1 pb-6 pt-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
       >
-        <span className="font-normal">Uni</span>
-        <span className="font-bold">Board</span>
+        <Logo size={36} />
       </Link>
 
       <ul className="flex flex-col gap-1">

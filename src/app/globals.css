@@ -227,3 +227,33 @@ body {
     63% 6px, 71% 2px, 79% 7px, 87% 1px, 94% 6px, 100% 3px, 100% 100%, 0 100%
   );
 }
+
+/* ==========================================================================
+   The Home ticket — the next class as a tear-off ticket.
+
+   Two notches are cut where the stub meets the ticket with a two-layer mask
+   (top half, bottom half), so they are real holes: the blobs behind show
+   through. A mask would clip a box-shadow away, so the shadow is a
+   drop-shadow on .ticket-hang around it.
+   ========================================================================== */
+
+.ticket-hang {
+  filter: drop-shadow(0 12px 18px rgb(17 17 17 / 0.07)) drop-shadow(0 2px 3px rgb(17 17 17 / 0.05));
+}
+
+.ticket {
+  --stub: 6.25rem;
+  --notch: 11px;
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at var(--stub) 0, #0000 97%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at var(--stub) 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at var(--stub) 0, #0000 97%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle var(--notch) at var(--stub) 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
+}
+
+@container (min-width: 42rem) {
+  .ticket {
+    --stub: 9rem;
+  }
+}

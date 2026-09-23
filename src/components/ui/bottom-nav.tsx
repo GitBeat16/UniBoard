@@ -33,7 +33,14 @@ export function isActive(href: string, pathname: string) {
  * Phones and tablets. On a laptop the SideNav takes over (lg and up), unless
  * `always` — the /preview gallery's phone frames keep theirs at any width.
  */
-export function BottomNav({ always = false }: { always?: boolean }) {
+export function BottomNav({
+  always = false,
+  activeHref,
+}: {
+  always?: boolean;
+  /** Forces which tab reads as current. Only the tour uses it. */
+  activeHref?: string;
+}) {
   const pathname = usePathname();
   // layoutId is page-global; scope it so two navs on one page (the /preview
   // gallery) do not share — and steal — the same sliding pill.
@@ -49,7 +56,7 @@ export function BottomNav({ always = false }: { always?: boolean }) {
     >
       <ul className="flex items-center justify-between rounded-full bg-paper px-2 py-2 shadow-lift">
         {tabs.map(({ href, label, icon: Icon }) => {
-          const active = isActive(href, pathname);
+          const active = isActive(href, activeHref ?? pathname);
 
           return (
             <li key={href} className="relative">
