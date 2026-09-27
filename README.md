@@ -178,6 +178,19 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
   labels, per-batch rooms, session types. An unreadable cell then arrives empty rather
   than missing, and every rule is testable without a model — `grid.test.ts` and
   `pipeline.test.ts` run the real PICT SY-III timetable end to end.
+- **Home asks the database for a verdict, not the term.** It used to page
+  through every class and every attendance mark just to say "one module is
+  below its threshold". `attendance_summary()` (security invoker, so RLS still
+  scopes it) returns four counts per module, mirroring `countSessions()` rule
+  for rule; `attendanceFromCounts()` turns them into the same verdict the
+  Timetable reaches from the classes themselves. Both were run on one fixture —
+  the SQL as a signed-in student inside a rolled-back block — and the numbers
+  are pinned in `stats.test.ts`, so if either side drifts a test fails. The
+  college cut-off is the end of its day in UTC on both sides.
+- **Home's loading state is scoped to Home.** `loading.tsx` lives in the
+  `(home)` route group; one level up it would wrap Timetable, Board and Money
+  too and show them a Home-shaped skeleton. The skeleton mirrors the real grid,
+  ticket and tiles so nothing jumps when the page lands.
 - **Flora holds a queue, not a line.** `observations()` collects everything
   true about the screen right now, best first; `nextObservation()` picks what
   to say, skipping anything said recently and never repeating what is already

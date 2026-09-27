@@ -692,6 +692,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      attendance_summary: {
+        Args: never
+        Returns: {
+          attended: number
+          missed: number
+          module_id: string
+          remaining: number
+          unmarked: number
+        }[]
+      }
       calendar_feed: {
         Args: { p_token: string }
         Returns: {

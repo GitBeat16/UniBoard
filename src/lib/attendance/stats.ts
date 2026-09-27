@@ -42,6 +42,16 @@ export type ModuleAttendance = {
   officialAsOf: Date | null;
 };
 
+/** What a module's classes add up to, before any judgement is made of them. */
+export type AttendanceCounts = {
+  attended: number;
+  missed: number;
+  /** Past classes with no mark, after any college cut-off. */
+  unmarked: number;
+  /** Classes still to come. */
+  remaining: number;
+};
+
 /**
  * Pure. No clock of its own — `now` is passed in, which is what makes the
  * boundary cases ("a class that started ten minutes ago") testable.
@@ -50,6 +60,21 @@ export type ModuleAttendance = {
  * how universities normally treat them.
  */
 export function moduleAttendance(input: StatsInput, now: Date): ModuleAttendance {
+  return attendanceFromCounts(input, countSessions(input, now));
+}
+
+/**
+ * Add up a module's classes.
+ *
+ * This is the half the database can also do — `attendance_summary()` returns
+ * the same four numbers — so a screen that only needs the verdict never has to
+ * download the whole term to get it. The two must agree; the SQL is written
+ * to mirror this line for line.
+ */
+export function countSessions(
+  input: Pick<StatsInput, "sessions" | "official">,
+  now: Date,
+): AttendanceCounts {
   const official = input.official ?? null;
 
   // The college's figure is the opening balance; everything it already counted
@@ -84,6 +109,14 @@ export function moduleAttendance(input: StatsInput, now: Date): ModuleAttendance
     }
   }
 
+  return { attended, missed, unmarked, remaining };
+}
+
+/** Judge a module from its counts: the percentage, the room left, the status. */
+export function attendanceFromCounts(
+  input: Pick<StatsInput, "moduleId" | "name" | "code" | "colorToken" | "threshold" | "official">,
+  { attended, missed, unmarked, remaining }: AttendanceCounts,
+): ModuleAttendance {
   const held = attended + missed;
   const t = input.threshold / 100;
 
@@ -118,7 +151,7 @@ export function moduleAttendance(input: StatsInput, now: Date): ModuleAttendance
     percent,
     canMissMore,
     status,
-    officialAsOf: official?.asOf ?? null,
+    officialAsOf: input.official?.asOf ?? null,
   };
 }
 
@@ -138,7 +171,8 @@ export function overallAttendance(modules: ModuleAttendance[]) {
  *
  * A date column comes back as "2026-09-20" with no time, and a class marked on
  * that same day was part of what the college counted — so the cut-off is the
- * end of that day, not its start.
+ * end of that day, not its start. It is pinned to UTC so it means the same
+ * thing here and in `attendance_summary()`, whatever zone the server runs in.
  */
 export function officialOf(module: {
   official_attended: number | null;
@@ -155,6 +189,6 @@ export function officialOf(module: {
   return {
     attended: module.official_attended,
     held: module.official_held,
-    asOf: new Date(`${module.official_as_of}T23:59:59`),
+    asOf: new Date(`${module.official_as_of}T23:59:59Z`),
   };
 }

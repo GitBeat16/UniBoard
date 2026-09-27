@@ -41,6 +41,7 @@ export function HomeView({
   atRisk = 0,
   modulesBelow = 0,
   hasOfficial,
+  hasTimetable: hasTimetableProp,
   overdueCount = 0,
   dueTodayCount = 0,
   minutesToNextClass = null,
@@ -54,12 +55,18 @@ export function HomeView({
   modulesBelow?: number;
   /** Whether the college's own attendance figure has been imported. */
   hasOfficial?: boolean;
+  /**
+   * Whether any classes exist at all. Without it, the day after term ends
+   * would read as "import your timetable".
+   */
+  hasTimetable?: boolean;
   overdueCount?: number;
   dueTodayCount?: number;
   minutesToNextClass?: number | null;
 }) {
   const now = useNow();
   const mounted = now > 0;
+  const hasTimetable = hasTimetableProp ?? nextSession !== null;
   const greeting = mounted ? greetingFor(new Date(now).getHours()) : "Hello,";
 
   return (
@@ -87,7 +94,7 @@ export function HomeView({
           <FloraSays
             context={{
               screen: "home",
-              hasTimetable: nextSession !== null,
+              hasTimetable,
               modulesBelow,
               modulesAtRisk: atRisk,
               hasOfficial,
@@ -117,7 +124,7 @@ export function HomeView({
               modulesThin={Math.max(0, atRisk - modulesBelow)}
               overdue={overdueCount}
               dueToday={dueTodayCount}
-              hasTimetable={nextSession !== null}
+              hasTimetable={hasTimetable}
             />
           </Rise>
         </div>

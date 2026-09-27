@@ -1,8 +1,7 @@
 import { HomeView } from "@/components/screens/home-view";
-import { moduleAttendance, officialOf } from "@/lib/attendance/stats";
+import { attendanceFromCounts, officialOf } from "@/lib/attendance/stats";
 import { urgencyOf, type WorkItem } from "@/lib/work/urgency";
 import { createClient } from "@/lib/supabase/server";
-import { fetchAll } from "@/lib/supabase/fetch-all";
 import { asTone } from "@/lib/tones";
 import type { SessionVM } from "@/lib/view-models";
 
@@ -15,50 +14,58 @@ export default async function HomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const nowIso = new Date().toISOString();
+  const now = new Date();
+  const nowIso = now.toISOString();
 
+  // Home needs a verdict per module and the next class or two — not the term.
+  // It used to download every class and every mark ever made to work those
+  // out; now the database does the counting (attendance_summary(), which
+  // mirrors countSessions() rule for rule) and only the next few classes
+  // cross the wire.
   const [
     { data: profile },
     { data: modules },
-    { data: sessions },
-    { data: records },
+    { data: summary, error: summaryError },
+    { data: upcomingSessions },
     { data: assignments },
     { data: exams },
   ] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("display_name, attendance_threshold, university_profiles(attendance_threshold)")
-        .eq("id", user!.id)
-        .single(),
-      supabase.from("modules").select("id, name, code, color_token, threshold, official_attended, official_held, official_as_of"),
-      fetchAll((from, to) =>
-        supabase
-          .from("class_sessions")
-          .select("id, module_id, type, starts_at, ends_at, room, is_assessed, has_submission")
-          .order("starts_at")
-          .order("id")
-          .range(from, to),
-      ).then((data) => ({ data })),
-      fetchAll((from, to) =>
-        supabase
-          .from("attendance_records")
-          .select("session_id, status")
-          .order("id")
-          .range(from, to),
-      ).then((data) => ({ data })),
-      supabase.from("assignments").select("id, title, due_at, module_id, status"),
-      supabase.from("exams").select("id, title, starts_at, module_id"),
-    ]);
+    supabase
+      .from("profiles")
+      .select("display_name, attendance_threshold, university_profiles(attendance_threshold)")
+      .eq("id", user!.id)
+      .single(),
+    supabase
+      .from("modules")
+      .select("id, name, code, color_token, threshold, official_attended, official_held, official_as_of"),
+    supabase.rpc("attendance_summary"),
+    // Anything not yet over, soonest first: a class that started ten minutes
+    // ago is still the one that matters. A handful covers overlaps.
+    supabase
+      .from("class_sessions")
+      .select("id, module_id, type, starts_at, ends_at, room, is_assessed, has_submission")
+      .gt("ends_at", nowIso)
+      .order("starts_at")
+      .order("id")
+      .limit(8),
+    // Handed-in work is never pressing, so it never needs to leave the database.
+    supabase
+      .from("assignments")
+      .select("id, title, due_at, module_id, status")
+      .not("status", "in", "(submitted,graded)"),
+    supabase.from("exams").select("id, title, starts_at, module_id"),
+  ]);
+
+  // Silently treating a failed count as "nothing below threshold" would be the
+  // most reassuring possible wrong answer, so it fails loudly instead.
+  if (summaryError) throw new Error(summaryError.message);
 
   const moduleById = new Map((modules ?? []).map((m) => [m.id, m]));
-  const statusBySession = new Map((records ?? []).map((r) => [r.session_id, r.status]));
 
-  // A class that started ten minutes ago is still the one that matters: the
-  // card should say "on now", not skip ahead to this afternoon.
-  const upcoming = (sessions ?? []).find((s) => s.ends_at > nowIso);
-  const isLive = upcoming ? upcoming.starts_at <= nowIso : false;
+  const upcoming = upcomingSessions?.[0] ?? null;
+  const isLive = upcoming ? new Date(upcoming.starts_at) <= now : false;
   // Flora's "next class in N minutes" is about one that has NOT started yet.
-  const nextToStart = (sessions ?? []).find((s) => s.starts_at >= nowIso);
+  const nextToStart = (upcomingSessions ?? []).find((s) => new Date(s.starts_at) >= now);
   const nextSession: SessionVM | null = upcoming
     ? {
         id: upcoming.id,
@@ -76,11 +83,15 @@ export default async function HomePage() {
       }
     : null;
 
-  const now = new Date();
+  // Whether there is a timetable at all — not just whether anything is left
+  // this term — so an empty week never reads as "import your timetable".
+  const countsByModule = new Map((summary ?? []).map((c) => [c.module_id, c]));
+  const hasTimetable = (summary ?? []).some((c) => c.attended + c.missed + c.unmarked + c.remaining > 0);
 
   let modulesBelow = 0;
   const atRisk = (modules ?? []).filter((m) => {
-    const stats = moduleAttendance(
+    const counts = countsByModule.get(m.id) ?? { attended: 0, missed: 0, unmarked: 0, remaining: 0 };
+    const stats = attendanceFromCounts(
       {
         moduleId: m.id,
         name: m.name,
@@ -95,14 +106,8 @@ export default async function HomePage() {
             DEFAULT_THRESHOLD,
         ),
         official: officialOf(m),
-        sessions: (sessions ?? [])
-          .filter((s) => s.module_id === m.id)
-          .map((s) => ({
-            startsAt: new Date(s.starts_at),
-            status: statusBySession.get(s.id) ?? null,
-          })),
       },
-      now,
+      counts,
     );
     if (stats.status === "below") modulesBelow++;
     return stats.status === "below" || stats.status === "thin";
@@ -153,6 +158,7 @@ export default async function HomePage() {
       atRisk={atRisk}
       modulesBelow={modulesBelow}
       hasOfficial={(modules ?? []).some((m) => m.official_as_of !== null)}
+      hasTimetable={hasTimetable}
       overdueCount={overdueCount}
       dueTodayCount={dueTodayCount}
       minutesToNextClass={minutesToNextClass}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { moduleAttendance } from "./stats";
+import { attendanceFromCounts, countSessions, moduleAttendance, officialOf } from "./stats";
 
 describe("counting from the college's own figure", () => {
   const asOf = new Date("2026-09-20T00:00:00Z");
@@ -81,5 +81,75 @@ describe("counting from the college's own figure", () => {
       held: 1,
       officialAsOf: null,
     });
+  });
+});
+
+
+/**
+ * The same fixture the database's attendance_summary() was checked against,
+ * inside a rolled-back transaction, as a signed-in student through RLS. The
+ * SQL returned A 2/1/2/3, B 32/11/1/2, C 0/0/0/0. If these ever disagree, one
+ * of the two has drifted and Home and Timetable will show different numbers.
+ */
+describe("the database and the app count the same way", () => {
+  const now = new Date("2026-09-27T06:00:00Z");
+  const day = 86_400_000;
+  const ago = (d: number) => new Date(now.getTime() - d * day);
+
+  it("counts every kind of mark", () => {
+    const counts = countSessions(
+      {
+        sessions: [
+          { startsAt: ago(1), status: "present" },
+          { startsAt: ago(2), status: "late" },
+          { startsAt: ago(3), status: "absent" },
+          { startsAt: ago(4), status: "excused" },
+          { startsAt: ago(5), status: "unknown" },
+          { startsAt: ago(6), status: null },
+          { startsAt: ago(-1), status: null },
+          { startsAt: ago(-2), status: null },
+          { startsAt: ago(-3), status: null },
+        ],
+      },
+      now,
+    );
+    expect(counts).toEqual({ attended: 2, missed: 1, unmarked: 2, remaining: 3 });
+  });
+
+  it("starts from the college and cuts off at the end of its day, in UTC", () => {
+    const official = officialOf({
+      official_attended: 30,
+      official_held: 40,
+      official_as_of: "2026-09-17",
+    });
+    const counts = countSessions(
+      {
+        official,
+        sessions: [
+          { startsAt: ago(20), status: "present" }, // before: already counted by the college
+          { startsAt: new Date("2026-09-17T23:00:00Z"), status: "present" }, // late on the day: still theirs
+          { startsAt: new Date("2026-09-18T00:30:00Z"), status: "present" }, // just after: ours
+          { startsAt: ago(5), status: "present" },
+          { startsAt: ago(3), status: "absent" },
+          { startsAt: ago(2), status: null },
+          { startsAt: ago(-1), status: null },
+          { startsAt: ago(-2), status: null },
+        ],
+      },
+      now,
+    );
+    expect(counts).toEqual({ attended: 32, missed: 11, unmarked: 1, remaining: 2 });
+  });
+
+  it("gives the same verdict from counts as from the classes themselves", () => {
+    const meta = { moduleId: "m", name: "DM", code: null, colorToken: "sky", threshold: 75 };
+    const sessions = [
+      { startsAt: ago(3), status: "present" as const },
+      { startsAt: ago(2), status: "absent" as const },
+      { startsAt: ago(-2), status: null },
+    ];
+    expect(attendanceFromCounts(meta, countSessions({ sessions }, now))).toEqual(
+      moduleAttendance({ ...meta, sessions }, now),
+    );
   });
 });
