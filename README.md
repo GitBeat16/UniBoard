@@ -372,6 +372,19 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
     turns the arc when an item is chosen (dots on a phone). If WebGL fails, the
     same stills show in a plain swipeable row. RotatingText was measured, not
   eyeballed: with its default spring the word was blank a third of every cycle.
+- **The launch film is code too.** `/preview/launch` (dev only) plays a ~55 s, 1920×1080
+  film with a scrubber: the night-before-a-deadline opening, the reveal, then the app's
+  features on coral flash cuts. Every frame is a pure function of the frame number
+  (`src/lib/launch/film.ts`, scenes in `src/components/launch/`), so it renders exactly:
+  `node tools/render-launch.mjs --audio launch-out/uniboard-launch-score.wav` steps a fake
+  clock one frame at a time and pipes screenshots into ffmpeg
+  (`--stills 30,400` saves single frames to check; `--half` renders at 960×540).
+  The score is composed in `tools/launch-score.py` (numpy + scipy, no samples, so no
+  licences) from the same scene lengths — from "statement" on, scenes are whole beats
+  (14 frames ≈ 128.6 BPM) so every flash lands on a downbeat. Renders go to `launch-out/`,
+  which git ignores. The one gotcha: motion's opacity fades run on the compositor, which
+  the fake clock can't drive, so film scenes animate entrances themselves and use app
+  components in their still form (`Logo animated={false}`, `Flora enter="none"`).
 - **The tour stills are the real app**, not mock-ups: `/preview/tour?scene=<id>`
   (dev only) draws each screen in `src/lib/tour.ts` with sample data, and
   `node tools/capture-tour.mjs [base-url]` (with `next dev` running; needs Playwright and

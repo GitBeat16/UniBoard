@@ -53,3 +53,7 @@ next-env.d.ts
 # Supabase CLI scratch
 supabase/.temp/
 supabase/.branches/
+
+# launch film renders (tools/render-launch.mjs, tools/launch-score.py)
+/launch-out/
+/launch-stills/
