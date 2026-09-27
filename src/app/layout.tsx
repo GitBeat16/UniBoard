@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import { MotionProvider } from "@/components/motion-provider";
+import { TapFeedback } from "@/components/tap-feedback";
 import "./globals.css";
 
 // One display family throughout, as in the reference. Three weights only —
@@ -31,6 +32,7 @@ export default function RootLayout({
     <html lang="en" className={`${poppins.variable} h-full`}>
       <body className="min-h-full">
         <MotionProvider>{children}</MotionProvider>
+        <TapFeedback />
       </body>
     </html>
   );

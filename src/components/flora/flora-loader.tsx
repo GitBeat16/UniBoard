@@ -104,6 +104,7 @@ export function FloraLoader({
         type="button"
         onClick={onTap}
         whileTap={press}
+        data-feedback="flora"
         aria-label="Flora — tap for another trick"
         className="block w-full rounded-tile focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
       >

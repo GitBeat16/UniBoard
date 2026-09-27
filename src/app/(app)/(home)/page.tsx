@@ -2,10 +2,28 @@ import { HomeView } from "@/components/screens/home-view";
 import { attendanceFromCounts, officialOf } from "@/lib/attendance/stats";
 import { urgencyOf, type WorkItem } from "@/lib/work/urgency";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAll } from "@/lib/supabase/fetch-all";
+import { CATEGORIES, type Budget, type Category, type Expense } from "@/lib/money/budget";
+import type { HomeDaySession } from "@/components/screens/home-view";
 import { asTone } from "@/lib/tones";
 import type { SessionVM } from "@/lib/view-models";
 
 const DEFAULT_THRESHOLD = 75;
+const DAY = 86_400_000;
+
+/**
+ * The window Home draws from: four weeks and a bit back for the marking
+ * streak, a week and a bit ahead for this week's strip. Wide enough on both
+ * sides that the viewer's "today" is inside it in any time zone.
+ */
+function windowBounds(now: Date) {
+  return {
+    from: new Date(now.getTime() - 32 * DAY).toISOString(),
+    to: new Date(now.getTime() + 8 * DAY).toISOString(),
+    // The Money screen's lookback, so the tile and the screen see the same spends.
+    spendsSince: new Date(now.getTime() - 40 * DAY).toISOString(),
+  };
+}
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -16,6 +34,7 @@ export default async function HomePage() {
 
   const now = new Date();
   const nowIso = now.toISOString();
+  const bounds = windowBounds(now);
 
   // Home needs a verdict per module and the next class or two — not the term.
   // It used to download every class and every mark ever made to work those
@@ -29,10 +48,13 @@ export default async function HomePage() {
     { data: upcomingSessions },
     { data: assignments },
     { data: exams },
+    windowSessions,
+    { data: budgetRows },
+    spends,
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("display_name, attendance_threshold, university_profiles(attendance_threshold)")
+      .select("display_name, currency, attendance_threshold, university_profiles(attendance_threshold)")
       .eq("id", user!.id)
       .single(),
     supabase
@@ -54,6 +76,31 @@ export default async function HomePage() {
       .select("id, title, due_at, module_id, status")
       .not("status", "in", "(submitted,graded)"),
     supabase.from("exams").select("id, title, starts_at, module_id"),
+    // The day, the week and the streak: classes in the window, marks attached.
+    fetchAll((from, to) =>
+      supabase
+        .from("class_sessions")
+        .select("id, module_id, type, room, starts_at, ends_at, attendance_records(status)")
+        .gte("starts_at", bounds.from)
+        .lt("starts_at", bounds.to)
+        .order("starts_at")
+        .order("id")
+        .range(from, to),
+    ),
+    supabase
+      .from("budget_periods")
+      .select("kind, total_budget, food_budget, starts_at")
+      .order("starts_at", { ascending: false })
+      .limit(24),
+    fetchAll((from, to) =>
+      supabase
+        .from("expenses")
+        .select("id, amount, category, note, spent_at")
+        .gte("spent_at", bounds.spendsSince)
+        .order("spent_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    ),
   ]);
 
   // Silently treating a failed count as "nothing below threshold" would be the
@@ -145,6 +192,46 @@ export default async function HomePage() {
   const overdueCount = workItems.filter((i) => urgencyOf(i, now) === "overdue").length;
   const dueTodayCount = workItems.filter((i) => urgencyOf(i, now) === "today").length;
 
+  // What the glance tiles need, worked out here where the data already is.
+  const dueThisWeek = workItems.filter((i) =>
+    ["overdue", "today", "soon", "this_week"].includes(urgencyOf(i, now)),
+  ).length;
+  const overall = (summary ?? []).reduce(
+    (acc, c) => ({ attended: acc.attended + c.attended, held: acc.held + c.attended + c.missed }),
+    { attended: 0, held: 0 },
+  );
+
+  const days: HomeDaySession[] = windowSessions.map((s) => {
+    const m = moduleById.get(s.module_id);
+    return {
+      id: s.id,
+      moduleName: m?.name ?? "Class",
+      tone: asTone(m?.color_token),
+      type: s.type,
+      room: s.room,
+      startsAt: s.starts_at,
+      endsAt: s.ends_at,
+      status: s.attendance_records?.status ?? null,
+    };
+  });
+
+  const budgets: Budget[] = (budgetRows ?? [])
+    .filter((b) => b.total_budget !== null)
+    .map((b) => ({
+      kind: b.kind,
+      total: Number(b.total_budget),
+      food: b.food_budget === null ? null : Number(b.food_budget),
+      startsOn: b.starts_at,
+    }));
+
+  const expenses: Expense[] = spends.map((e) => ({
+    id: e.id,
+    amount: Number(e.amount),
+    category: (CATEGORIES as readonly string[]).includes(e.category) ? (e.category as Category) : "other",
+    note: e.note,
+    spentAt: e.spent_at,
+  }));
+
   const minutesToNextClass = nextToStart
     ? Math.round((new Date(nextToStart.starts_at).getTime() - now.getTime()) / 60_000)
     : null;
@@ -162,6 +249,12 @@ export default async function HomePage() {
       overdueCount={overdueCount}
       dueTodayCount={dueTodayCount}
       minutesToNextClass={minutesToNextClass}
+      days={days}
+      dueThisWeek={dueThisWeek}
+      overall={overall}
+      budgets={budgets}
+      expenses={expenses}
+      currency={profile?.currency ?? "INR"}
     />
   );
 }

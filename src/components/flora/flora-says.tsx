@@ -174,6 +174,7 @@ export function FloraSays({
               ? "Ask Flora for another thought"
               : "Flora"
         }
+        data-feedback="flora"
         className="relative shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink"
       >
         <Flora mood={current.mood} size={size} action={current.action ?? "idle"} />
@@ -211,7 +212,7 @@ export function FloraSays({
               whileTap={press}
               transition={SOFT_SPRING}
               aria-pressed={sound}
-              aria-label={sound ? "Mute Flora" : "Let Flora make a sound"}
+              aria-label={sound ? "Mute sounds" : "Turn sounds on"}
               className="grid size-6 place-items-center rounded-full bg-canvas text-muted hover:bg-ink hover:text-paper focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
             >
               <Speaker on={sound} />

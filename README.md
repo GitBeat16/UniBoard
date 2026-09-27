@@ -187,6 +187,24 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
   the SQL as a signed-in student inside a rolled-back block — and the numbers
   are pinned in `stats.test.ts`, so if either side drifts a test fails. The
   college cut-off is the end of its day in UTC on both sides.
+- **Home reads like a day, not a dashboard.** A sky at the top follows the
+  viewer's clock (dawn, day, dusk, night; the sun or moon on its arc), with
+  Flora in it. Under it, the whole of today as a timeline — classes, named
+  gaps (lunch, a break, free time), a rail with a dot for now — then the next
+  class as a ticket and what needs you, beside four glance tiles and the week
+  as seven squares. The maths is `src/lib/home/day.ts`, pure and in local
+  time. Every tile reuses its own screen's code: the money tile runs Money's
+  `summarize()`, attendance comes from the same counts as the Timetable. The
+  streak counts days with every class marked; weekends neither count nor
+  break it, and today only counts once it is marked, so a morning with a class
+  still to mark never shows a broken streak.
+- **Every tap has a feel.** One capture-phase `pointerdown` listener
+  (`src/components/tap-feedback.tsx`) gives buttons and links a short buzz and,
+  when sounds are on, a soft tick; Flora (`data-feedback="flora"`) gets her own
+  double bump. Anything can opt out with `data-feedback="none"`. Haptics are on
+  by default and off under reduced motion; iPhones do not let web pages
+  vibrate, so there it is a no-op. Sound stays off until asked for. Both
+  switches are on Me.
 - **Flora is a reward for waiting, not a toll.** Every loading screen shows
   nothing extra for the first 400 ms, so a fast load goes straight from
   skeleton to page and she is never seen. Past that she walks on with a trick

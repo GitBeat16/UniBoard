@@ -19,21 +19,38 @@ export function HomeSkeleton() {
       aria-live="polite"
       aria-label="Loading your day"
     >
-      {/* greeting + Flora */}
-      <div className="flex flex-col gap-6 @4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-end @4xl:gap-10">
-        <div>
-          <Bone className="mb-6 h-11 w-36 rounded-xl lg:hidden" />
-          <Bone className="h-3 w-40" />
-          <Bone className="mt-4 h-9 w-44 @2xl:h-11" />
-          <Bone className="mt-2 h-9 w-56 @2xl:h-11" />
-        </div>
-        <div className="flex items-end gap-2">
-          <Bone className="size-16 shrink-0 rounded-full" />
-          <Bone className="mb-3 h-16 flex-1 rounded-tile rounded-bl-md" />
+      <Bone className="h-11 w-36 rounded-xl lg:hidden" />
+
+      {/* the sky, with the greeting and Flora in it */}
+      <div className="rounded-card bg-sky-soft/60 px-5 pb-5 pt-6 shadow-soft @2xl:px-8 @2xl:pt-8">
+        <div className="flex flex-col gap-5 @4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-end @4xl:gap-10">
+          <div>
+            <Bone className="h-3 w-40" />
+            <Bone className="mt-4 h-9 w-52 @2xl:h-11" />
+            <Bone className="mt-2 h-9 w-40 @2xl:h-11" />
+          </div>
+          <div className="flex items-end gap-2">
+            <Bone className="size-24 shrink-0 rounded-full" />
+            <Bone className="mb-3 h-16 flex-1 rounded-tile rounded-bl-md bg-paper" />
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-8 @4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-start @4xl:gap-10">
+      {/* today */}
+      <div className="rounded-card bg-paper py-4 shadow-soft">
+        <div className="flex justify-between px-5">
+          <Bone className="h-3 w-32" />
+          <Bone className="h-3 w-20" />
+        </div>
+        <Bone className="mx-5 mt-4 h-1.5 rounded-full" />
+        <div className="mt-4 flex gap-2.5 overflow-hidden px-5">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Bone key={i} className="h-[6.5rem] w-40 shrink-0 rounded-tile @4xl:w-auto @4xl:flex-1" />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-6 @2xl:gap-8 @4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-start @4xl:gap-10">
         <div className="flex min-w-0 flex-col gap-8">
           {/* the ticket, stub and all — hung like the real one, so its
               shadow is there before its words are */}
@@ -74,19 +91,28 @@ export function HomeSkeleton() {
           </div>
         </div>
 
-        {/* shortcuts */}
-        <div>
-          <Bone className="h-3 w-16" />
-          <ul className="mt-4 grid grid-cols-2 gap-3 @2xl:grid-cols-4 @4xl:grid-cols-2">
+        {/* at a glance, and the week */}
+        <div className="flex min-w-0 flex-col gap-4">
+          <Bone className="h-3 w-24" />
+          <ul className="grid grid-cols-2 gap-3">
             {[0, 1, 2, 3].map((i) => (
-              <li key={i} className="flex flex-col rounded-tile bg-paper p-4 shadow-soft">
-                <Bone className="size-12 rounded-full" />
-                <Bone className="mt-3 h-4 w-20" />
-                <Bone className="mt-2 h-3 w-full" />
-                <Bone className="mt-1.5 h-3 w-2/3" />
+              <li key={i} className="flex h-[7.5rem] flex-col rounded-tile bg-paper p-4 shadow-soft">
+                <Bone className="h-3 w-16" />
+                <div className="mt-3 flex items-center gap-3">
+                  <Bone className="size-12 rounded-full" />
+                  <Bone className="h-6 w-12" />
+                </div>
               </li>
             ))}
           </ul>
+          <div className="rounded-tile bg-paper p-4 shadow-soft">
+            <Bone className="h-3 w-20" />
+            <div className="mt-3 grid grid-cols-7 gap-1.5">
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                <Bone key={i} className="aspect-square w-full max-w-10 justify-self-center rounded-lg" />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

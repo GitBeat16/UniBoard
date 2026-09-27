@@ -55,6 +55,9 @@ const MOTIF: Record<FloraMood, Note[]> = {
 /** The tap on her — a single soft blip, so a tap feels answered instantly. */
 const TAP: Note[] = [{ hz: NOTE.top, at: 0, for: 0.06 }];
 
+/** Any other button: shorter and lower than hers, so she stays the special one. */
+const CLICK: Note[] = [{ hz: NOTE.mid, at: 0, for: 0.035 }];
+
 const PEAK_GAIN = 0.05;
 
 let context: AudioContext | null = null;
@@ -89,13 +92,17 @@ export function playTap(): void {
   emit(TAP);
 }
 
-function emit(notes: Note[]): void {
+export function playClick(): void {
+  emit(CLICK, 0.6);
+}
+
+function emit(notes: Note[], loudness = 1): void {
   if (!context || context.state !== "running") return;
 
   const start = context.currentTime;
   for (const note of notes) {
     try {
-      voice(context, note, start);
+      voice(context, note, start, loudness);
     } catch {
       return;
     }
@@ -109,7 +116,7 @@ function emit(notes: Note[]): void {
  * up over 12ms and down exponentially is what makes it a chirp rather than a
  * beep.
  */
-function voice(ctx: AudioContext, note: Note, start: number) {
+function voice(ctx: AudioContext, note: Note, start: number, loudness = 1) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
 
@@ -119,7 +126,7 @@ function voice(ctx: AudioContext, note: Note, start: number) {
   const from = start + note.at;
   const to = from + note.for;
   gain.gain.setValueAtTime(0.0001, from);
-  gain.gain.exponentialRampToValueAtTime(PEAK_GAIN, from + 0.012);
+  gain.gain.exponentialRampToValueAtTime(PEAK_GAIN * loudness, from + 0.012);
   gain.gain.exponentialRampToValueAtTime(0.0001, to);
 
   osc.connect(gain).connect(ctx.destination);

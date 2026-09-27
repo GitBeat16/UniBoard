@@ -4,7 +4,16 @@ import { useActionState, useState, useTransition } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Card } from "@/components/ui/card";
 import { FloraSays } from "@/components/flora/flora-says";
-import { setFloraEnabled, useFloraEnabled } from "@/lib/flora/preference";
+import {
+  setFloraEnabled,
+  setFloraSound,
+  setHaptics,
+  useFloraEnabled,
+  useFloraSound,
+  useHaptics,
+} from "@/lib/flora/preference";
+import { play, silence, unlock } from "@/lib/flora/sound";
+import { HAPTIC, vibrate } from "@/lib/feedback";
 import { SketchRing } from "@/components/charts/sketch-ring";
 import { UniversityField } from "@/components/me/university-field";
 import { AnimatedNumber, Rise, Stagger } from "@/components/ui/motion-primitives";
@@ -228,6 +237,7 @@ export function MeView({
 
       <Rise>
         <FloraToggle />
+        <FeelToggles />
       </Rise>
 
       <Rise>
@@ -331,6 +341,69 @@ function FloraToggle() {
       >
         {enabled ? "Hide" : "Bring her back"}
       </PillButton>
+    </Card>
+  );
+}
+
+/**
+ * How the app answers a tap. Both switches are this browser's, not the
+ * account's: sound off in a lecture, on at your desk.
+ */
+function FeelToggles() {
+  const sound = useFloraSound();
+  const haptics = useHaptics();
+
+  return (
+    <Card className="flex flex-col gap-4 p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-body font-semibold">Sounds</p>
+          <p className="mt-0.5 text-label text-muted">
+            {sound ? "A soft tick on taps, and Flora's chirps." : "Silent. Nothing plays."}
+          </p>
+        </div>
+        <PillButton
+          type="button"
+          variant={sound ? "outline" : "primary"}
+          size="sm"
+          aria-pressed={sound}
+          onClick={() => {
+            setFloraSound(!sound);
+            if (sound) {
+              silence();
+            } else {
+              // Answer the switch, so it is obvious what was turned on.
+              unlock();
+              setTimeout(() => play("happy"), 60);
+            }
+          }}
+        >
+          {sound ? "Mute" : "Turn on"}
+        </PillButton>
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-body font-semibold">Haptics</p>
+          <p className="mt-0.5 text-label text-muted">
+            {haptics
+              ? "A tiny buzz on taps, where your phone allows it."
+              : "Off. Taps stay still."}
+          </p>
+        </div>
+        <PillButton
+          type="button"
+          variant={haptics ? "outline" : "primary"}
+          size="sm"
+          aria-pressed={haptics}
+          onClick={() => {
+            setHaptics(!haptics);
+            if (!haptics) vibrate(HAPTIC.flora);
+          }}
+        >
+          {haptics ? "Turn off" : "Turn on"}
+        </PillButton>
+      </div>
     </Card>
   );
 }

@@ -16,6 +16,7 @@ import { PlacesList } from "@/components/money/places-list";
 import {
   sampleAdvisorPayload,
   sampleBudgets,
+  sampleHomeDays,
   sampleCampus,
   sampleExpenses,
   samplePlaces,
@@ -178,6 +179,13 @@ export default function PreviewPage() {
             todayIso={new Date().toISOString()}
             nextSession={sampleNextSession}
             atRisk={1}
+            hasTimetable
+            days={sampleHomeDays()}
+            dueThisWeek={3}
+            overall={{ attended: 41, held: 50 }}
+            budgets={sampleBudgets}
+            expenses={sampleExpenses}
+            currency="INR"
           />
         </Phone>
 

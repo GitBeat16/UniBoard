@@ -321,3 +321,46 @@ export const sampleEvents: BoardEvent[] = [
     shape: null,
   },
 ];
+
+/**
+ * Home's window for the gallery: today's PICT-shaped day around the real
+ * clock, and a fortnight behind it marked so the streak and the week strip
+ * have something to show.
+ */
+export function sampleHomeDays(now = new Date()) {
+  const at = (dayOffset: number, h: number, m = 0) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + dayOffset);
+    d.setHours(h, m, 0, 0);
+    return d;
+  };
+  const slots: Array<[number, number, number, string, "lecture" | "lab" | "tutorial", string]> = [
+    [10, 0, 60, "MDM", "lecture", "coral"],
+    [11, 0, 60, "DS", "lecture", "sky"],
+    [12, 45, 60, "UHV", "lecture", "sun"],
+    [13, 45, 60, "DM", "lecture", "iris"],
+    [15, 0, 120, "DSL", "lab", "leaf"],
+  ];
+  const out: import("@/components/screens/home-view").HomeDaySession[] = [];
+  for (let d = -14; d <= 6; d++) {
+    const weekday = at(d, 12).getDay();
+    if (weekday === 0 || weekday === 6) continue;
+    for (const [h, m, mins, name, type, tone] of slots) {
+      const start = at(d, h, m);
+      const end = new Date(start.getTime() + mins * 60_000);
+      const past = start <= now;
+      out.push({
+        id: `home-${d}-${h}${m}`,
+        moduleName: name,
+        tone: tone as import("@/lib/tones").Tone,
+        type,
+        room: "A1-213",
+        startsAt: start.toISOString(),
+        endsAt: end.toISOString(),
+        // Mostly present; one miss; today's past ones left for her to mark.
+        status: !past || d === 0 ? null : d === -3 && h === 11 ? "absent" : "present",
+      });
+    }
+  }
+  return out;
+}

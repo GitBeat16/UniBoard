@@ -13,6 +13,7 @@ import { useSyncExternalStore } from "react";
 
 const VISIBLE = "uniboard:flora";
 const SOUND = "uniboard:flora-sound";
+const HAPTICS = "uniboard:haptics";
 
 const listeners = new Set<() => void>();
 
@@ -58,7 +59,8 @@ export function setFloraEnabled(on: boolean) {
 }
 
 /**
- * Her voice is off by default, and stays off until it is asked for.
+ * Sound — Flora's voice and the tick on every tap — is off by default, and
+ * stays off until it is asked for.
  *
  * A page that makes a noise on arrival is a page people close. She offers the
  * switch once she has something to say, and remembers the answer.
@@ -73,4 +75,30 @@ export function useFloraSound() {
 
 export function setFloraSound(on: boolean) {
   write(SOUND, on);
+}
+
+/**
+ * A short buzz on taps, where the phone can do it. On by default: it is felt,
+ * not heard, so it bothers nobody else in the room. (iPhones do not let web
+ * pages vibrate, so there it is simply a no-op.)
+ */
+export function useHaptics() {
+  return useSyncExternalStore(
+    subscribe,
+    () => read(HAPTICS, true),
+    () => true,
+  );
+}
+
+export function setHaptics(on: boolean) {
+  write(HAPTICS, on);
+}
+
+/** Read outside React — for the tap listener, which is not a component. */
+export function readSound() {
+  return read(SOUND, false);
+}
+
+export function readHaptics() {
+  return read(HAPTICS, true);
 }

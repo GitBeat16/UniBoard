@@ -1,18 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { motion } from "motion/react";
 import { Logo } from "@/components/brand/logo";
 import { SketchBar } from "@/components/charts/sketch-bar";
 import { ShapeFrame } from "@/components/board/card-shape";
 import { Pin } from "@/components/board/pin";
 import { FloraSays } from "@/components/flora/flora-says";
-import {
-  IconAttendance,
-  IconBoard,
-  IconGoal,
-  IconMoney,
-} from "@/components/ui/icons";
+import { GlanceTiles, WeekAtAGlance } from "@/components/home/glance";
+import { HomeSky } from "@/components/home/home-sky";
+import { TodayTimeline, type TimelineSession } from "@/components/home/today-timeline";
 import { Illustration } from "@/components/ui/illustration";
 import { LocalTime } from "@/components/ui/local-time";
 import { Rise, Stagger } from "@/components/ui/motion-primitives";
@@ -20,18 +18,33 @@ import { PillLink } from "@/components/ui/pill-button";
 import { cn } from "@/lib/cn";
 import { hangOf } from "@/lib/board/items";
 import { classTiming, formatCountdown, greetingFor } from "@/lib/home/countdown";
+import { toneSoft, type Tone } from "@/lib/tones";
 import { SOFT_SPRING } from "@/lib/motion";
-import { toneBg, toneSoft, type Tone } from "@/lib/tones";
 import { useNow } from "@/lib/use-now";
 import { SESSION_TYPE_LABEL, type SessionVM } from "@/lib/view-models";
+import type { Budget, Expense } from "@/lib/money/budget";
+import type { Enums } from "@/lib/supabase/database.types";
+
+/** A class in Home's window, as the server sends it: plain values only. */
+export type HomeDaySession = {
+  id: string;
+  moduleName: string;
+  tone: Tone;
+  type: Enums<"session_type">;
+  room: string | null;
+  startsAt: string;
+  endsAt: string;
+  status: Enums<"attendance_status"> | null;
+};
 
 /**
  * Presentational Home. Kept free of data access so the real page and the
  * /preview gallery render the exact same component — a preview that is a
  * separate copy drifts within a week and stops being worth looking at.
  *
- * Three things, in the order a student needs them: the next class (as a
- * ticket), what needs them (pinned notes, the Board's own), and where to go.
+ * Top to bottom, in the order a student needs it: a sky that says what time
+ * of day it is, with Flora in it; the whole of today; then the next class as
+ * a ticket and what needs you, beside four numbers and the shape of the week.
  */
 export function HomeView({
   displayName,
@@ -45,6 +58,12 @@ export function HomeView({
   overdueCount = 0,
   dueTodayCount = 0,
   minutesToNextClass = null,
+  days = [],
+  dueThisWeek = 0,
+  overall = { attended: 0, held: 0 },
+  budgets = [],
+  expenses = [],
+  currency = "INR",
 }: {
   displayName: string;
   todayIso: string;
@@ -63,50 +82,79 @@ export function HomeView({
   overdueCount?: number;
   dueTodayCount?: number;
   minutesToNextClass?: number | null;
+  /** Classes from a few weeks back to a week ahead, for today, the week and the streak. */
+  days?: HomeDaySession[];
+  dueThisWeek?: number;
+  overall?: { attended: number; held: number };
+  budgets?: Budget[];
+  expenses?: Expense[];
+  currency?: string;
 }) {
   const now = useNow();
   const mounted = now > 0;
   const hasTimetable = hasTimetableProp ?? nextSession !== null;
-  const greeting = mounted ? greetingFor(new Date(now).getHours()) : "Hello,";
+  const clock = mounted ? new Date(now) : null;
+  const greeting = clock ? greetingFor(clock.getHours()) : "Hello,";
+
+  // Dates cross the server boundary as strings; the day maths wants Dates.
+  const sessions: TimelineSession[] = useMemo(
+    () =>
+      days.map((d) => ({
+        ...d,
+        startsAt: new Date(d.startsAt),
+        endsAt: new Date(d.endsAt),
+      })),
+    [days],
+  );
 
   return (
-    <Stagger className="flex flex-col gap-8">
-      {/* ------------------------------------------------------ greeting */}
-      <div className="flex flex-col gap-6 @4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-end @4xl:gap-10">
-        <Rise>
-          <header>
-            {/* The animated mark greets you on phones and tablets; on a laptop
-                it lives in the sidebar instead, so it is shown once. */}
-            <Logo size={44} className="mb-6 flex w-fit lg:hidden" />
-            <LocalTime
-              iso={todayIso}
-              mode="dayLong"
-              /* Sits over a background blob, where muted is still too light. */
-              className="text-caption font-semibold uppercase text-ink/80"
-            />
-            <h1 className="mt-2 text-display @2xl:text-[2.75rem] @2xl:leading-[1.05]">
-              <span className="block font-normal">{greeting}</span>
-              <span className="block font-bold">{displayName}</span>
-            </h1>
-          </header>
-        </Rise>
-        <Rise>
-          <FloraSays
-            context={{
-              screen: "home",
-              hasTimetable,
-              modulesBelow,
-              modulesAtRisk: atRisk,
-              hasOfficial,
-              overdueCount,
-              dueTodayCount,
-              minutesToNextClass,
-            }}
-          />
-        </Rise>
-      </div>
+    <Stagger className="flex flex-col gap-6 @2xl:gap-8">
+      {/* The animated mark greets you on phones and tablets; on a laptop it
+          lives in the sidebar instead, so it is shown once. */}
+      <Rise className="lg:hidden">
+        <Logo size={44} className="flex w-fit" />
+      </Rise>
 
-      <div className="flex flex-col gap-8 @4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-start @4xl:gap-10">
+      {/* ---------------------------------------------------------- sky */}
+      <Rise>
+        <HomeSky hour={clock ? clock.getHours() : null} minute={clock?.getMinutes()}>
+          <div className="flex flex-col gap-5 @4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-end @4xl:gap-10">
+            <header>
+              <LocalTime
+                iso={todayIso}
+                mode="dayLong"
+                className="text-caption font-semibold uppercase text-ink/80"
+              />
+              <h1 className="mt-2 text-display @2xl:text-[2.75rem] @2xl:leading-[1.05]">
+                <span className="block font-normal">{greeting}</span>
+                <span className="block font-bold">{displayName}</span>
+              </h1>
+            </header>
+            <FloraSays
+              size="md"
+              context={{
+                screen: "home",
+                hasTimetable,
+                modulesBelow,
+                modulesAtRisk: atRisk,
+                hasOfficial,
+                overdueCount,
+                dueTodayCount,
+                minutesToNextClass,
+              }}
+            />
+          </div>
+        </HomeSky>
+      </Rise>
+
+      {/* -------------------------------------------------------- today */}
+      {hasTimetable && mounted && (
+        <Rise>
+          <TodayTimeline sessions={sessions} now={now} />
+        </Rise>
+      )}
+
+      <div className="flex flex-col gap-6 @2xl:gap-8 @4xl:grid @4xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] @4xl:items-start @4xl:gap-10">
         <div className="flex min-w-0 flex-col gap-8">
           {/* ---------------------------------------------------- the ticket */}
           <Rise>
@@ -129,10 +177,35 @@ export function HomeView({
           </Rise>
         </div>
 
-        {/* ------------------------------------------------------ shortcuts */}
-        <Rise>
-          <Shortcuts />
-        </Rise>
+        {/* ------------------------------------------- at a glance, the week */}
+        <div className="flex min-w-0 flex-col gap-4">
+          <Rise>
+            <h2 className="mb-3 text-caption font-semibold uppercase text-ink/80">At a glance</h2>
+            {mounted ? (
+              <GlanceTiles
+                now={now}
+                sessions={sessions}
+                overall={overall}
+                dueThisWeek={dueThisWeek}
+                budgets={budgets}
+                expenses={expenses}
+                currency={currency}
+              />
+            ) : (
+              // Same footprint before the clock is known, so nothing jumps.
+              <div className="grid grid-cols-2 gap-3" aria-hidden="true">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="h-[7.5rem] rounded-tile bg-paper shadow-soft" />
+                ))}
+              </div>
+            )}
+          </Rise>
+          {hasTimetable && mounted && (
+            <Rise>
+              <WeekAtAGlance now={now} sessions={sessions} />
+            </Rise>
+          )}
+        </div>
       </div>
     </Stagger>
   );
@@ -395,46 +468,3 @@ function NeedsYou({
   );
 }
 
-// -------------------------------------------------------------- shortcuts
-
-const SHORTCUTS = [
-  { href: "/timetable", label: "Attendance", hint: "Rings, and how many you can miss", icon: IconAttendance, tone: "leaf" },
-  { href: "/board", label: "Board", hint: "Hand-ins, exams and events", icon: IconBoard, tone: "coral" },
-  { href: "/money", label: "Money", hint: "What today can take", icon: IconMoney, tone: "sun" },
-  { href: "/me", label: "Goals", hint: "What you are working towards", icon: IconGoal, tone: "iris" },
-] as const;
-
-function Shortcuts() {
-  return (
-    <section>
-      <h2 className="text-caption font-semibold uppercase text-ink/80">Jump to</h2>
-      <ul className="mt-4 grid grid-cols-2 gap-3 @2xl:grid-cols-4 @4xl:grid-cols-2">
-        {SHORTCUTS.map(({ href, label, hint, icon: Icon, tone }) => (
-          <li key={href + label}>
-            <motion.div whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }} transition={SOFT_SPRING} className="h-full">
-              <Link
-                href={href}
-                className="group flex h-full flex-col rounded-tile bg-paper p-4 shadow-soft hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-              >
-                <span className={cn("grid size-12 place-items-center rounded-full", toneSoft[tone])}>
-                  <Icon className="size-7" />
-                </span>
-                <span className="mt-3 flex items-center justify-between gap-2 text-body font-bold">
-                  {label}
-                  <span
-                    className={cn(
-                      "size-2 rounded-full opacity-0 transition-opacity group-hover:opacity-100",
-                      toneBg[tone],
-                    )}
-                    aria-hidden="true"
-                  />
-                </span>
-                <span className="mt-0.5 text-label leading-snug text-muted">{hint}</span>
-              </Link>
-            </motion.div>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
