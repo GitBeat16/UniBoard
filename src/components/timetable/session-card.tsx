@@ -10,6 +10,7 @@ import { EASE_SOFT, SOFT_SPRING, press } from "@/lib/motion";
 import { toneBg, toneSoft, toneText } from "@/lib/tones";
 import { SESSION_TYPE_LABEL, type SessionVM } from "@/lib/view-models";
 import { markAttendance } from "@/app/(app)/timetable/actions";
+import { tellFlora } from "@/lib/flora/bus";
 import type { Enums } from "@/lib/supabase/database.types";
 
 const STATUS_LABEL: Partial<Record<Enums<"attendance_status">, string>> = {
@@ -35,6 +36,9 @@ export function SessionCard({
   function mark(status: Enums<"attendance_status">) {
     startTransition(async () => {
       await markAttendance(session.id, status);
+      // Marking a class and getting nothing back is the moment she stops
+      // feeling like a companion.
+      tellFlora(status === "absent" ? "marked-absent" : "marked-present");
     });
   }
 

@@ -178,6 +178,29 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
   labels, per-batch rooms, session types. An unreadable cell then arrives empty rather
   than missing, and every rule is testable without a model — `grid.test.ts` and
   `pipeline.test.ts` run the real PICT SY-III timetable end to end.
+- **Flora holds a queue, not a line.** `observations()` collects everything
+  true about the screen right now, best first; `nextObservation()` picks what
+  to say, skipping anything said recently and never repeating what is already
+  on screen. So tapping her moves her on, and a re-render never makes her
+  blurt. `isStale()` is the other half: a line only exists while the thing it
+  describes does, so a lapsed reaction or a count she has just fixed makes her
+  move rather than keep asserting it.
+- **She only interrupts for something she has never said.** Text that rewrites
+  itself while you read it is restless, and every change is announced to a
+  screen reader — so the 90-second timer only fires for a genuinely new
+  thought, and everything else waits for a tap.
+- **Her voice is synthesised, not shipped.** `src/lib/flora/sound.ts` builds a
+  short motif per mood out of sine tones — nothing to download, nothing to
+  404, and tuning it is changing a number. It is off by default and stays off:
+  a page that makes a noise on arrival is a page people close. The
+  AudioContext is only resumed inside a click, because every browser suspends
+  it until a gesture.
+- **`tellFlora()` is how a screen tells her what just happened.** A card three
+  levels down a list knows a class was marked; she lives at the top of the
+  page. A module-level channel beats threading a callback through every
+  component in between for a message that is fire-and-forget. Reactions last
+  six seconds — a mascot still congratulating you a minute later is one you
+  stop reading.
 - **The timetable must be correctable by hand.** A read grid is close, never
   exact, and colleges move classes. Every class opens a sheet that can change
   its module, kind, room and times, or remove it — for that one class or for

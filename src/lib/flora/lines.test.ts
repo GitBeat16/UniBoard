@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { floraSpeech, type FloraContext } from "./lines";
+import {
+  floraSpeech,
+  hasSomethingNew,
+  isStale,
+  nextObservation,
+  observations,
+  type FloraContext,
+} from "./lines";
 
 const home = (over: Partial<FloraContext> = {}): FloraContext => ({
   screen: "home",
@@ -188,5 +195,126 @@ describe("the college's own attendance figure", () => {
   it("never asks for it before there is a timetable to match it to", () => {
     const out = floraSpeech({ screen: "timetable", hasTimetable: false, hasOfficial: false });
     expect(out?.text).toContain("timetable");
+  });
+});
+
+describe("moving on to the next thing", () => {
+  const ctx = {
+    screen: "timetable" as const,
+    hasTimetable: true,
+    hasOfficial: true,
+    officialAgeDays: 2,
+    modulesBelow: 1,
+    unmarkedCount: 5,
+  };
+
+  it("collects everything true, not only the winner", () => {
+    const all = observations(ctx);
+    expect(all.map((o) => o.id)).toContain("below");
+    expect(all.map((o) => o.id)).toContain("unmarked");
+    expect(all[0].id).toBe("below");
+  });
+
+  it("leads with the most important line when she has said nothing", () => {
+    const next = nextObservation(observations(ctx), { now: 1000, spoken: {} });
+    expect(next?.id).toBe("below");
+  });
+
+  it("moves on when tapped, rather than repeating itself", () => {
+    const all = observations(ctx);
+    const next = nextObservation(all, { now: 1000, spoken: { below: 1000 }, currentId: "below" });
+    expect(next?.id).not.toBe("below");
+  });
+
+  it("does not come back to a line while it is still fresh", () => {
+    const all = observations(ctx);
+    const now = 60_000;
+    const spoken = Object.fromEntries(all.map((o) => [o.id, now]));
+    const next = nextObservation(all, { now, spoken, currentId: "below" });
+    // Everything is on cooldown, so she reaches for the stalest — but never
+    // repeats what is already on screen.
+    expect(next?.id).not.toBe("below");
+  });
+
+  it("answers what just happened before anything else", () => {
+    const all = observations({ ...ctx, reaction: "marked-present" });
+    const next = nextObservation(all, { now: 1000, spoken: { below: 0 }, currentId: "below" });
+    expect(next?.text).toContain("in the bank");
+  });
+
+  it("says nothing at all when there is nothing to say", () => {
+    expect(nextObservation([], { now: 1, spoken: {} })).toBe(null);
+  });
+
+  it("nudges only while something has never been said", () => {
+    const all = observations(ctx);
+    expect(hasSomethingNew(all, { spoken: {}, currentId: "below" })).toBe(true);
+
+    const spoken = Object.fromEntries(all.map((o) => [o.id, 1000]));
+    expect(hasSomethingNew(all, { spoken, currentId: "below" })).toBe(false);
+  });
+});
+
+describe("reading the day on screen", () => {
+  it("counts the unmarked classes on the day she is looking at", () => {
+    const all = observations({
+      screen: "timetable",
+      hasTimetable: true,
+      hasOfficial: true,
+      dayOffset: 0,
+      dayCount: 5,
+      dayUnmarked: 2,
+    });
+    expect(all.map((o) => o.text)).toContain("2 classes on this day are still unmarked.");
+  });
+
+  it("warns about a heavy day ahead, not one already survived", () => {
+    const heavy = { screen: "timetable" as const, hasTimetable: true, hasOfficial: true, dayCount: 6 };
+    expect(observations({ ...heavy, dayOffset: 1 }).map((o) => o.id)).toContain("day-heavy");
+    expect(observations({ ...heavy, dayOffset: -1 }).map((o) => o.id)).not.toContain("day-heavy");
+  });
+
+  it("points out a clear day ahead as something to use", () => {
+    const all = observations({
+      screen: "timetable",
+      hasTimetable: true,
+      hasOfficial: true,
+      dayOffset: 2,
+      dayCount: 0,
+    });
+    expect(all.map((o) => o.id)).toContain("day-clear");
+  });
+});
+
+describe("not contradicting herself", () => {
+  it("does not say all is quiet while she is still asking for a timetable", () => {
+    const all = observations({ screen: "home", hasTimetable: false });
+    expect(all.map((o) => o.id)).toContain("no-timetable");
+    expect(all.map((o) => o.id)).not.toContain("all-quiet");
+  });
+
+  it("keeps the pleasantry once there is a timetable", () => {
+    const all = observations({ screen: "home", hasTimetable: true, hasOfficial: true });
+    expect(all.map((o) => o.id)).toContain("all-quiet");
+  });
+});
+
+describe("letting go of a line", () => {
+  it("knows when what she is saying has stopped being true", () => {
+    const before = observations({ screen: "timetable", hasTimetable: true, hasOfficial: true, unmarkedCount: 5 });
+    const after = observations({ screen: "timetable", hasTimetable: true, hasOfficial: true, unmarkedCount: 0 });
+    expect(isStale(after, "unmarked")).toBe(true);
+    expect(isStale(before, "unmarked")).toBe(false);
+  });
+
+  it("treats a lapsed reaction as stale, so she goes back to the real news", () => {
+    const during = observations({ screen: "home", hasTimetable: true, hasOfficial: true, reaction: "marked-present" });
+    const after = observations({ screen: "home", hasTimetable: true, hasOfficial: true });
+    expect(isStale(during, "reaction:marked-present")).toBe(false);
+    expect(isStale(after, "reaction:marked-present")).toBe(true);
+  });
+
+  it("is not stale when she is saying nothing", () => {
+    expect(isStale([], null)).toBe(false);
   });
 });

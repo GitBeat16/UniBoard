@@ -14,6 +14,7 @@ import { Rise, Stagger } from "@/components/ui/motion-primitives";
 import { PillButton } from "@/components/ui/pill-button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { cn } from "@/lib/cn";
+import { tellFlora } from "@/lib/flora/bus";
 import { EASE_SOFT, LAYOUT_SPRING } from "@/lib/motion";
 import {
   CATEGORIES,
@@ -472,6 +473,7 @@ function QuickAdd({ currency }: { currency: string }) {
   useEffect(() => {
     if (!state?.ok) return;
     formRef.current?.reset();
+    tellFlora("spend-logged");
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset mirrors the form reset
     setNote("");
   }, [state]);

@@ -30,6 +30,14 @@ function officialAgeDays(modules: ModuleAttendance[], now: number) {
   return Math.max(0, Math.floor((now - newest) / 86_400_000));
 }
 
+/** How many days the open day is from today: negative behind, positive ahead. */
+function daysFromToday(key: string) {
+  const open = new Date(`${key}T12:00:00`);
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  return Math.round((open.getTime() - today.getTime()) / 86_400_000);
+}
+
 /** Today on the viewer's calendar, as YYYY-MM-DD. */
 function todayKey() {
   return dayKey(new Date());
@@ -121,6 +129,13 @@ export function TimetableView({
             hasOfficial: modules.some((m) => m.officialAsOf !== null),
             officialAgeDays: officialAgeDays(modules, now),
             nothingOnToday: sessions.length > 0 && todays.length === 0,
+            // What she can see on the screen with you: which day is open,
+            // how full it is, and what is still unanswered on it.
+            dayOffset: daysFromToday(activeKey),
+            dayCount: todays.length,
+            dayUnmarked: todays.filter(
+              (s) => !s.status && new Date(s.startsAt).getTime() <= now,
+            ).length,
           }}
         />
       )}

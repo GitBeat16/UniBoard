@@ -8,6 +8,7 @@ import { TimeZoneField } from "@/components/ui/time-zone-field";
 import { cn } from "@/lib/cn";
 import { EASE_SOFT, SOFT_SPRING } from "@/lib/motion";
 import { useMediaQuery } from "@/lib/use-media-query";
+import { tellFlora } from "@/lib/flora/bus";
 import { SESSION_TYPE_LABEL, type SessionVM } from "@/lib/view-models";
 import {
   addManualClass,
@@ -69,8 +70,10 @@ export function ClassSheet({
 
   // Close once the change has landed; the list behind re-renders with it.
   useEffect(() => {
-    if (state?.ok) onClose();
-  }, [state, onClose]);
+    if (!state?.ok) return;
+    tellFlora(state === dropState ? "class-removed" : editing ? "class-changed" : "class-added");
+    onClose();
+  }, [state, dropState, editing, onClose]);
 
   const busy = saving || dropping;
 
