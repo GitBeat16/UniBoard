@@ -187,6 +187,18 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
   the SQL as a signed-in student inside a rolled-back block — and the numbers
   are pinned in `stats.test.ts`, so if either side drifts a test fails. The
   college cut-off is the end of its day in UTC on both sides.
+- **Flora is a reward for waiting, not a toll.** Every loading screen shows
+  nothing extra for the first 400 ms, so a fast load goes straight from
+  skeleton to page and she is never seen. Past that she walks on with a trick
+  fitted to the screen (`src/lib/flora/loading.ts` picks it; the drawing is
+  `src/components/flora/loading/scenes.tsx`): watering, pinning, counting,
+  juggling and reading on Home; reading or counting on Timetable; pinning or
+  juggling on the Board; stacking coins on Money. She only sleeps after 11 pm.
+  Tap her for another trick (with a chirp, if her sound is on). Tips under her
+  each describe something real — never a fake percentage. Every trick is the
+  real Flora with props on a steady beat; a beat remounts the run, which is
+  how state resets without setting it inside an effect. Under reduced motion
+  it is a still Flora and one tip.
 - **Home's loading state is scoped to Home.** `loading.tsx` lives in the
   `(home)` route group; one level up it would wrap Timetable, Board and Money
   too and show them a Home-shaped skeleton. The skeleton mirrors the real grid,

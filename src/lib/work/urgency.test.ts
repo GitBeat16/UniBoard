@@ -26,9 +26,10 @@ describe("urgencyOf", () => {
     expect(urgencyOf(item({ status: "graded" }), NOW)).toBe("done");
   });
 
-  it("never marks an exam done — it is ahead of you or behind you", () => {
+  it("treats an exam as ahead of you until it starts, and done once it has", () => {
     expect(urgencyOf(item({ kind: "exam", status: null, at: at("2026-10-09T09:00:00") }), NOW)).toBe("this_week");
-    expect(urgencyOf(item({ kind: "exam", status: null, at: at("2026-10-01T09:00:00") }), NOW)).toBe("overdue");
+    // Already sat: behind you, never "overdue".
+    expect(urgencyOf(item({ kind: "exam", status: null, at: at("2026-10-01T09:00:00") }), NOW)).toBe("done");
   });
 
   it("calls anything in the past overdue", () => {

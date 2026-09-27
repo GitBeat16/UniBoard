@@ -39,13 +39,17 @@ const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
 export function urgencyOf(item: WorkItem, now: Date): Urgency {
-  // An exam is never "done" — it is either ahead of you or behind you.
   if (item.kind === "assignment" && (item.status === "submitted" || item.status === "graded")) {
     return "done";
   }
 
   const at = new Date(item.at);
-  if (at.getTime() < now.getTime()) return "overdue";
+  if (at.getTime() < now.getTime()) {
+    // An exam that has started is behind you, not late. Calling it overdue
+    // had Flora saying "something is past its date" about an exam already
+    // sat, and the planner booking revision for it.
+    return item.kind === "exam" ? "done" : "overdue";
+  }
 
   if (sameDay(at, now)) return "today";
 
