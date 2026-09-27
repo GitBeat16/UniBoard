@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import BlurText from "@/components/reactbits/BlurText";
 import CountUp from "@/components/reactbits/CountUp";
 import Magnet from "@/components/reactbits/Magnet";
@@ -10,6 +11,7 @@ import ShinyText from "@/components/reactbits/ShinyText";
 import TextPressure from "@/components/reactbits/TextPressure";
 import { ScrollVelocity } from "@/components/reactbits/ScrollVelocity";
 import { cn } from "@/lib/cn";
+import { EASE_SOFT } from "@/lib/motion";
 
 /**
  * The landing page's moving parts, built from React Bits and dressed in
@@ -53,6 +55,10 @@ export function HeroHeadline({ fontFamily }: { fontFamily: string }) {
     textColor: "#111111",
     strokeColor: "#ff0000",
     minFontSize: 36,
+    // Never thinner than a light weight or narrower than condensed, so the
+    // sentence reads at rest; the full swell still happens under the pointer.
+    weightRange: [300, 700],
+    widthRange: [55, 110],
     as: "p",
   } as const;
   return (
@@ -189,5 +195,56 @@ export function ClosingHeadline() {
       <span>&nbsp;</span>
       <BlurText text="first week." delay={80} startDelay={200} className="font-bold" />
     </h2>
+  );
+}
+
+/**
+ * The page header, pinned to the top. It sits bare over the hero and gains a
+ * frosted backing and a hairline once the page scrolls, so the links stay
+ * readable over everything below.
+ */
+export function StickyHeader({ children }: { children: React.ReactNode }) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return (
+    <header
+      className={cn(
+        "sticky top-0 z-40 border-b transition-[background-color,border-color,backdrop-filter] duration-300",
+        scrolled ? "border-hairline/80 bg-canvas/80 backdrop-blur-md" : "border-transparent",
+      )}
+    >
+      {children}
+    </header>
+  );
+}
+
+/**
+ * Fades a block up the first time it scrolls into view. Without JavaScript
+ * the page's <noscript> rule shows it as it is.
+ */
+export function Reveal({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      className={cn("reveal", className)}
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "0px 0px -8% 0px" }}
+      transition={{ duration: 0.55, ease: EASE_SOFT, delay }}
+    >
+      {children}
+    </motion.div>
   );
 }

@@ -25,10 +25,14 @@
  *   at 700 × 900) so phone-shaped screenshots aren't cropped.
  * - `onError`: called if WebGL can't start, so the page can show a plain
  *   fallback instead of an empty box.
+ * - `offsetY` lifts the arc (a share of the height), so the dropping side
+ *   cards and their titles aren't cut off at the bottom.
+ * - `onActiveChange` reports which item is in the middle, and a `ref` gets
+ *   `goTo(index)` — so a caption list beside it can follow and steer it.
  * - No placeholder images: `items` is required.
  */
 import { Camera, Mesh, Plane, Program, Renderer, Texture, Transform } from "ogl";
-import { useEffect, useRef } from "react";
+import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 
 type GL = Renderer["gl"];
 
@@ -419,6 +423,8 @@ interface AppConfig {
   autoplay: number;
   planeWidth: number;
   planeHeight: number;
+  offsetY: number;
+  onActive?: (index: number) => void;
 }
 
 class App {
@@ -443,6 +449,10 @@ class App {
   raf: number = 0;
 
   autoplay: number;
+  offsetY: number;
+  count: number;
+  active = -1;
+  onActive?: (index: number) => void;
   /** Anything holding the gallery still: hover, focus, a drag. */
   holds = new Set<string>();
   /** Until when the drift waits after a hand let go (ms, performance.now). */
@@ -458,6 +468,9 @@ class App {
     this.container = container;
     this.scrollSpeed = config.scrollSpeed;
     this.autoplay = config.autoplay;
+    this.offsetY = config.offsetY;
+    this.count = config.items.length;
+    this.onActive = config.onActive;
     this.scroll = { ease: config.scrollEase, current: 0, target: 0, last: 0 };
     this.onCheckDebounce = debounce(() => this.onCheck(), 200);
     this.createRenderer();
@@ -575,12 +588,24 @@ class App {
   hold = (reason: string) => () => this.holds.add(reason);
   release = (reason: string) => () => {
     this.holds.delete(reason);
-    this.resumeAt = performance.now() + 1200;
+    this.resumeAt = Math.max(this.resumeAt, performance.now() + 1200);
   };
   onEnter = this.hold("hover");
   onLeave = this.release("hover");
   onFocus = this.hold("focus");
   onBlur = this.release("focus");
+
+  /** Turn the shortest way round to item `index`. */
+  goTo(index: number) {
+    const w = this.medias[0]?.width;
+    if (!w) return;
+    const n = this.count;
+    const at = Math.round(this.scroll.target / w);
+    let delta = (((index - at) % n) + n) % n;
+    if (delta > n / 2) delta -= n;
+    this.scroll.target = (at + delta) * w;
+    this.resumeAt = performance.now() + 4000;
+  }
 
   onCheck() {
     if (!this.medias || !this.medias[0]) return;
@@ -603,6 +628,7 @@ class App {
     const height = 2 * Math.tan(fov / 2) * this.camera.position.z;
     const width = height * this.camera.aspect;
     this.viewport = { width, height };
+    if (this.scene) this.scene.position.y = this.offsetY * height;
     if (this.medias) {
       this.medias.forEach((media) => media.onResize({ screen: this.screen, viewport: this.viewport }));
     }
@@ -619,6 +645,15 @@ class App {
     }
     this.renderer.render({ scene: this.scene, camera: this.camera });
     this.scroll.last = this.scroll.current;
+    const w = this.medias[0]?.width;
+    if (w && this.onActive) {
+      const n = this.count;
+      const i = (((Math.round(this.scroll.current / w)) % n) + n) % n;
+      if (i !== this.active) {
+        this.active = i;
+        this.onActive(i);
+      }
+    }
     this.raf = this.visible ? window.requestAnimationFrame(this.update) : 0;
   };
 
@@ -680,8 +715,15 @@ interface CircularGalleryProps {
   planeHeight?: number;
   className?: string;
   ariaLabel?: string;
+  /** Lift the arc by this share of the gallery's height. */
+  offsetY?: number;
+  /** Called with the index (into `items`) of the card now in the middle. */
+  onActiveChange?: (index: number) => void;
   onError?: () => void;
+  ref?: Ref<CircularGalleryHandle>;
 }
+
+export type CircularGalleryHandle = { goTo: (index: number) => void };
 
 export default function CircularGallery({
   items,
@@ -696,13 +738,20 @@ export default function CircularGallery({
   planeHeight = 900,
   className = "",
   ariaLabel = "Circular image gallery. Use Left and Right Arrow keys to navigate.",
+  offsetY = 0,
+  onActiveChange,
   onError,
+  ref,
 }: CircularGalleryProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const appRef = useRef<App | undefined>(undefined);
   const onErrorRef = useRef(onError);
+  const onActiveRef = useRef(onActiveChange);
   useEffect(() => {
     onErrorRef.current = onError;
+    onActiveRef.current = onActiveChange;
   });
+  useImperativeHandle(ref, () => ({ goTo: (index: number) => appRef.current?.goTo(index) }), []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -732,7 +781,10 @@ export default function CircularGallery({
             autoplay: reduced ? 0 : autoplay,
             planeWidth,
             planeHeight,
+            offsetY,
+            onActive: (i) => onActiveRef.current?.(i),
           });
+          appRef.current = app;
         } catch (error) {
           console.error("CircularGallery: WebGL could not start", error);
           onErrorRef.current?.();
@@ -741,8 +793,9 @@ export default function CircularGallery({
     return () => {
       isMounted = false;
       app?.destroy();
+      appRef.current = undefined;
     };
-  }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, autoplay, planeWidth, planeHeight]);
+  }, [items, bend, textColor, borderRadius, font, scrollSpeed, scrollEase, autoplay, planeWidth, planeHeight, offsetY]);
 
   return (
     <div

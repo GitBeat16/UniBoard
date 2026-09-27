@@ -349,7 +349,9 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
   - **CircularGallery** (the tour) is WebGL, through `ogl` (the page's one
     added dependency). Its input is scoped to the gallery — the original took the
     wheel and drags from the whole window — and a vertical scroll passes through
-    to the page. If WebGL fails, the same stills show in a plain swipeable row. RotatingText was measured, not
+    to the page. The caption list under it follows the card in the middle and
+    turns the arc when an item is chosen (dots on a phone). If WebGL fails, the
+    same stills show in a plain swipeable row. RotatingText was measured, not
   eyeballed: with its default spring the word was blank a third of every cycle.
 - **The tour stills are the real app**, not mock-ups: `/preview/tour?scene=<id>`
   (dev only) draws each screen in `src/lib/tour.ts` with sample data, and

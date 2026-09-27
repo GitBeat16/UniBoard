@@ -12,7 +12,9 @@ import {
   HeroHeadline,
   MagneticLink,
   Numbers,
+  Reveal,
   RotatingLine,
+  StickyHeader,
 } from "@/components/landing/landing-bits";
 import { FloraSolo } from "@/components/flora/flora-says";
 import ClickSpark from "@/components/reactbits/ClickSpark";
@@ -118,23 +120,25 @@ export default function WelcomePage() {
 
         {/* Without JavaScript the headline would stay blurred out: show it plain. */}
         <noscript>
-          <style>{`.blur-text span{opacity:1!important;filter:none!important;transform:none!important}`}</style>
+          <style>{`.blur-text span,.reveal{opacity:1!important;filter:none!important;transform:none!important}`}</style>
         </noscript>
 
         {/* ---------------------------------------------------------- header */}
-        <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 pt-6 md:px-8 lg:px-10">
-          <Link href="/welcome" className="rounded-chip focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink">
-            <Logo size={40} />
-          </Link>
-          <nav className="flex items-center gap-2">
-            <PillLink href="/sign-in" variant="ghost" size="sm" className="hidden sm:inline-flex">
-              Sign in
-            </PillLink>
-            <PillLink href="/sign-in" size="sm">
-              Get started
-            </PillLink>
-          </nav>
-        </header>
+        <StickyHeader>
+          <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-3 md:px-8 lg:px-10">
+            <Link href="/welcome" className="rounded-chip focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink">
+              <Logo size={40} />
+            </Link>
+            <nav className="flex items-center gap-2">
+              <PillLink href="/sign-in" variant="ghost" size="sm" className="hidden sm:inline-flex">
+                Sign in
+              </PillLink>
+              <PillLink href="/sign-in" size="sm">
+                Get started
+              </PillLink>
+            </nav>
+          </div>
+        </StickyHeader>
 
         <main>
           {/* ------------------------------------------------------------ hero */}
@@ -202,18 +206,20 @@ export default function WelcomePage() {
             {/* A swipeable row on a phone — eight cards stacked would be a long
                 scroll of sameness — and a grid once there is room. */}
             <ul className="mx-auto mt-10 flex w-full max-w-6xl snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-5 px-5 pb-4 [scrollbar-width:none] md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:px-8 lg:grid-cols-4 lg:px-10 [&::-webkit-scrollbar]:hidden">
-              {FEATURES.map(({ icon: Icon, tone, title, text }) => (
+              {FEATURES.map(({ icon: Icon, tone, title, text }, i) => (
                 <li key={title} className="w-[16.5rem] shrink-0 snap-start md:w-auto">
-                  <SpotlightCard
-                    spotlightColor="rgba(242, 132, 107, 0.16)"
-                    className="h-full rounded-card border border-hairline bg-paper p-6 shadow-soft transition-shadow hover:shadow-lift"
-                  >
-                    <span className={cn("relative grid size-12 place-items-center rounded-full", toneSoft[tone])}>
-                      <Icon className="size-7" />
-                    </span>
-                    <h3 className="relative mt-4 text-body font-bold">{title}</h3>
-                    <p className="relative mt-1.5 text-label leading-relaxed text-muted">{text}</p>
-                  </SpotlightCard>
+                  <Reveal className="h-full" delay={(i % 4) * 0.07}>
+                    <SpotlightCard
+                      spotlightColor="rgba(242, 132, 107, 0.16)"
+                      className="h-full rounded-card border border-hairline bg-paper p-6 shadow-soft transition-shadow hover:shadow-lift"
+                    >
+                      <span className={cn("relative grid size-12 place-items-center rounded-full", toneSoft[tone])}>
+                        <Icon className="size-7" />
+                      </span>
+                      <h3 className="relative mt-4 text-body font-bold">{title}</h3>
+                      <p className="relative mt-1.5 text-label leading-relaxed text-muted">{text}</p>
+                    </SpotlightCard>
+                  </Reveal>
                 </li>
               ))}
             </ul>
@@ -221,35 +227,37 @@ export default function WelcomePage() {
 
           {/* -------------------------------------------------------- privacy */}
           <section className="mx-auto w-full max-w-6xl px-5 pb-20 md:px-8 lg:px-10 lg:pb-28">
-            <SpotlightCard
-              spotlightColor="rgba(255, 255, 255, 0.08)"
-              className="grid gap-8 rounded-card bg-ink p-8 text-paper sm:p-10 lg:grid-cols-3"
-            >
-              <div className="relative">
-                <h2 className="text-h1">
-                  <span className="block font-normal">Yours,</span>
-                  <span className="block font-bold">and only yours.</span>
-                </h2>
-              </div>
-              <ul className="relative grid gap-5 text-label leading-relaxed text-paper/80 sm:grid-cols-2 lg:col-span-2">
-                <li>
-                  <span className="block text-body font-semibold text-paper">Private by default</span>
-                  Every row is locked to your account in the database itself, not just hidden by the app.
-                </li>
-                <li>
-                  <span className="block text-body font-semibold text-paper">No tracking</span>
-                  Your campus pin is set once, by you. Location is never watched in the background.
-                </li>
-                <li>
-                  <span className="block text-body font-semibold text-paper">Anonymous sharing</span>
-                  Share a campus event and classmates see the event — never who posted it.
-                </li>
-                <li>
-                  <span className="block text-body font-semibold text-paper">Not a proxy</span>
-                  UniBoard never marks attendance anywhere official. It mirrors reality for your planning.
-                </li>
-              </ul>
-            </SpotlightCard>
+            <Reveal>
+              <SpotlightCard
+                spotlightColor="rgba(255, 255, 255, 0.08)"
+                className="grid gap-8 rounded-card bg-ink p-8 text-paper sm:p-10 lg:grid-cols-3"
+              >
+                <div className="relative">
+                  <h2 className="text-h1">
+                    <span className="block font-normal">Yours,</span>
+                    <span className="block font-bold">and only yours.</span>
+                  </h2>
+                </div>
+                <ul className="relative grid gap-5 text-label leading-relaxed text-paper/80 sm:grid-cols-2 lg:col-span-2">
+                  <li>
+                    <span className="block text-body font-semibold text-paper">Private by default</span>
+                    Every row is locked to your account in the database itself, not just hidden by the app.
+                  </li>
+                  <li>
+                    <span className="block text-body font-semibold text-paper">No tracking</span>
+                    Your campus pin is set once, by you. Location is never watched in the background.
+                  </li>
+                  <li>
+                    <span className="block text-body font-semibold text-paper">Anonymous sharing</span>
+                    Share a campus event and classmates see the event — never who posted it.
+                  </li>
+                  <li>
+                    <span className="block text-body font-semibold text-paper">Not a proxy</span>
+                    UniBoard never marks attendance anywhere official. It mirrors reality for your planning.
+                  </li>
+                </ul>
+              </SpotlightCard>
+            </Reveal>
           </section>
 
           {/* -------------------------------------------------------------- cta */}

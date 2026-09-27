@@ -23,6 +23,9 @@
  *   letter at a time.
  * - It rests when nobody can see it: the per-frame loop stops off-screen, and
  *   under reduced motion the word is drawn once and holds still.
+ * - \`weightRange\` / \`widthRange\` bound how thin and narrow a letter gets
+ *   far from the pointer (default: the original 100–900 and 5–200), so a
+ *   sentence can stay readable at rest.
  * - A space keeps a minimum width, so compressed words don't run together.
  * - `drift`: with no pointer moving (every phone), the pressure point sweeps
  *   slowly across the word so touch screens see the effect too.
@@ -70,6 +73,8 @@ const DRIFT_AFTER = 2500;
  * @property {string} [strokeColor]
  * @property {string} [className]
  * @property {number} [minFontSize]
+ * @property {readonly [number, number]} [weightRange] wght far from / at the pointer.
+ * @property {readonly [number, number]} [widthRange] wdth far from / at the pointer.
  */
 
 /** @param {TextPressureProps} props */
@@ -94,8 +99,12 @@ const TextPressure = ({
   strokeColor = '#FF0000',
   className = '',
 
-  minFontSize = 24
+  minFontSize = 24,
+  weightRange = [100, 900],
+  widthRange = [5, 200]
 }) => {
+  const [minWght, maxWght] = weightRange;
+  const [minWdth, maxWdth] = widthRange;
   const containerRef = useRef(null);
   const titleRef = useRef(null);
   const spansRef = useRef([]);
@@ -183,8 +192,8 @@ const TextPressure = ({
 
         const d = dist(mouseRef.current, charCenter);
 
-        const wdth = width ? Math.floor(getAttr(d, maxDist, 5, 200)) : 100;
-        const wght = weight ? Math.floor(getAttr(d, maxDist, 100, 900)) : 400;
+        const wdth = width ? Math.floor(getAttr(d, maxDist, minWdth, maxWdth)) : 100;
+        const wght = weight ? Math.floor(getAttr(d, maxDist, minWght, maxWght)) : 400;
         const italVal = italic ? getAttr(d, maxDist, 0, 1) : 0;
         const alphaVal = alpha ? getAttr(d, maxDist, 0, 1).toFixed(2) : 1;
 
@@ -234,7 +243,7 @@ const TextPressure = ({
       io.disconnect();
       cancelAnimationFrame(rafId);
     };
-  }, [width, weight, italic, alpha, drift]);
+  }, [width, weight, italic, alpha, drift, minWght, maxWght, minWdth, maxWdth]);
 
   const styleElement = useMemo(() => {
     return (
