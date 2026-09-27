@@ -24,6 +24,7 @@ import { EASE_SOFT, SOFT_SPRING, press } from "@/lib/motion";
 import {
   addGoal,
   archiveGoal,
+  linkGoogle,
   regenerateCalendarToken,
   saveProfile,
   setGoalProgress,
@@ -413,6 +414,11 @@ function UpgradeCard() {
     upgradeAccount,
     null,
   );
+  // Success leaves for Google and returns here; only a failure comes back.
+  const [googleState, googleAction, goingToGoogle] = useActionState<ActionState, FormData>(
+    linkGoogle,
+    null,
+  );
 
   return (
     <Card className="border-l-4 border-sun">
@@ -421,9 +427,23 @@ function UpgradeCard() {
       </p>
       <h2 className="mt-2 text-h2 font-bold">Keep this account</h2>
       <p className="mt-2 text-body text-muted">
-        Add an email and password and everything you have entered stays exactly
-        where it is — same account, just reachable from another device.
+        Add Google, or an email and password, and everything you have entered
+        stays exactly where it is — same account, just reachable from another
+        device.
       </p>
+
+      <form action={googleAction} className="mt-4 flex flex-col gap-2">
+        <PillButton type="submit" size="md" disabled={goingToGoogle || pending}>
+          {goingToGoogle ? "Opening Google…" : "Keep it with Google"}
+        </PillButton>
+        <Status state={googleState} />
+      </form>
+
+      <div className="mt-4 flex items-center gap-3">
+        <span className="h-px flex-1 bg-hairline" />
+        <span className="text-caption uppercase text-muted">or with email</span>
+        <span className="h-px flex-1 bg-hairline" />
+      </div>
 
       <form action={action} className="mt-4 flex flex-col gap-3">
         <input
@@ -443,7 +463,7 @@ function UpgradeCard() {
           placeholder="Password (8+ characters)"
           className={field}
         />
-        <PillButton type="submit" size="md" disabled={pending}>
+        <PillButton type="submit" variant="outline" size="md" disabled={pending || goingToGoogle}>
           {pending ? "Saving…" : "Save my account"}
         </PillButton>
         <Status state={state} />

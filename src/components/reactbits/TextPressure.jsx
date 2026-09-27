@@ -26,6 +26,11 @@
  * - \`weightRange\` / \`widthRange\` bound how thin and narrow a letter gets
  *   far from the pointer (default: the original 100–900 and 5–200), so a
  *   sentence can stay readable at rest.
+ * - \`fit\` (on by default): letters swelling under the pointer made the line
+ *   wider than its box, so it ran off the edge — behind whatever sat beside
+ *   it. Each frame the line is measured and shrunk just enough to fit (fast
+ *   when it grows, easing back when it relaxes). The box keeps its full
+ *   height meanwhile, so nothing below it jumps.
  * - A space keeps a minimum width, so compressed words don't run together.
  * - `drift`: with no pointer moving (every phone), the pressure point sweeps
  *   slowly across the word so touch screens see the effect too.
@@ -69,6 +74,7 @@ const DRIFT_AFTER = 2500;
  * @property {boolean} [stroke]
  * @property {boolean} [scale]
  * @property {boolean} [drift]
+ * @property {boolean} [fit] Shrink the line so it never overflows its box.
  * @property {string} [textColor]
  * @property {string} [strokeColor]
  * @property {string} [className]
@@ -94,6 +100,7 @@ const TextPressure = ({
   stroke = false,
   scale = false,
   drift = true,
+  fit = true,
 
   textColor = '#FFFFFF',
   strokeColor = '#FF0000',
@@ -112,6 +119,8 @@ const TextPressure = ({
   const mouseRef = useRef({ x: 0, y: 0 });
   const cursorRef = useRef({ x: 0, y: 0 });
   const lastMoveRef = useRef(-Infinity);
+  /** How far the line is shrunk to fit (1 = not at all). */
+  const fitRef = useRef(1);
 
   const [scaleY, setScaleY] = useState(1);
   const [lineHeight, setLineHeight] = useState(1);
@@ -206,6 +215,24 @@ const TextPressure = ({
           span.style.opacity = alphaVal;
         }
       });
+
+      if (fit && containerRef.current) {
+        // Measure again, after this frame's widths, and shrink to fit.
+        let total = 0;
+        spansRef.current.forEach(span => {
+          if (span) total += span.getBoundingClientRect().width;
+        });
+        const k = fitRef.current;
+        const room = containerRef.current.clientWidth * 0.985;
+        if (total > 0 && room > 0) {
+          const target = Math.min(1, (room * k) / total);
+          const next = target < k ? target : k + (target - k) * 0.08;
+          if (Math.abs(next - k) > 0.0005) {
+            fitRef.current = next;
+            titleRef.current.style.setProperty('--tp-k', next.toFixed(4));
+          }
+        }
+      }
     };
 
     if (reduced) {
@@ -214,7 +241,8 @@ const TextPressure = ({
         const r = containerRef.current.getBoundingClientRect();
         mouseRef.current = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
       }
-      paint();
+      // A few passes, so the fit settles on the still frame.
+      for (let i = 0; i < 4; i++) paint();
       return;
     }
 
@@ -243,7 +271,7 @@ const TextPressure = ({
       io.disconnect();
       cancelAnimationFrame(rafId);
     };
-  }, [width, weight, italic, alpha, drift, minWght, maxWght, minWdth, maxWdth]);
+  }, [width, weight, italic, alpha, drift, fit, minWght, maxWght, minWdth, maxWdth]);
 
   const styleElement = useMemo(() => {
     return (
@@ -302,7 +330,11 @@ const TextPressure = ({
           fontFamily,
           textTransform: 'uppercase',
           // The original measured the box after mount: width / (letters / 2).
-          fontSize: `max(${minFontSize}px, ${(200 / chars.length).toFixed(3)}cqw)`,
+          // --tp-k is the fit (see above), set per frame without a re-render.
+          fontSize: `calc(max(${minFontSize}px, ${(200 / chars.length).toFixed(3)}cqw) * var(--tp-k, 1))`,
+          // The unshrunk height, held, so the page doesn't move as it fits.
+          minHeight: `calc(max(${minFontSize}px, ${(200 / chars.length).toFixed(3)}cqw) * ${lineHeight})`,
+          alignItems: 'center',
           lineHeight,
           transform: `scale(1, ${scaleY})`,
           transformOrigin: 'center top',

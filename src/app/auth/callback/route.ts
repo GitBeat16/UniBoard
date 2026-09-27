@@ -16,7 +16,9 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
-  const next = searchParams.get("next") ?? "/";
+  // Only ever a path on this site — never somewhere a crafted link chooses.
+  const rawNext = searchParams.get("next") ?? "/";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
 
   const fail = (message: string) =>
     NextResponse.redirect(`${origin}/sign-in?error=${encodeURIComponent(message)}`);
@@ -53,6 +55,10 @@ function readable(message: string): string {
   // the link, so opening it elsewhere (or after clearing cookies) cannot work.
   if (m.includes("code verifier") || m.includes("code challenge")) {
     return "Open the link in the same browser you requested it from — or just use a password below.";
+  }
+  // Linking a guest to a Google account that already has its own UniBoard.
+  if (m.includes("identity") && m.includes("already")) {
+    return "That Google account already has its own UniBoard account. Sign out and sign in with Google to use it.";
   }
   if (m.includes("expired")) {
     return "That link has expired. Links last an hour.";

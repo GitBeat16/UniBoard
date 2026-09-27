@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { getRequestOrigin } from "@/lib/url/server";
 import { nameKey, shortKey, tidyShortName, tidyUniversityName } from "@/lib/university/names";
 
 export type ActionState = { ok: boolean; message: string } | null;
@@ -275,6 +277,50 @@ export async function upgradeAccount(
   };
 }
 
+
+/**
+ * Keeps a guest account by attaching a Google identity to it. The user id
+ * stays the same, so everything already entered comes along — the same
+ * promise as the email form above, without a password to remember.
+ *
+ * Needs "Allow manual linking" on in Supabase (Authentication → Sign In /
+ * Providers), as well as the Google provider itself.
+ */
+export async function linkGoogle(_prev: ActionState, _formData: FormData): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "You need to be signed in." };
+  if (!user.is_anonymous) return { ok: false, message: "This account is already kept." };
+
+  const { data, error } = await supabase.auth.linkIdentity({
+    provider: "google",
+    options: {
+      redirectTo: `${await getRequestOrigin()}/auth/callback?next=/me`,
+      queryParams: { prompt: "select_account" },
+    },
+  });
+
+  if (error || !data.url) {
+    const m = (error?.message ?? "").toLowerCase();
+    if (m.includes("manual linking")) {
+      return {
+        ok: false,
+        message: "Linking isn’t switched on yet. Enable “Allow manual linking” in Supabase → Authentication → Sign In / Providers.",
+      };
+    }
+    if (m.includes("provider is not enabled") || m.includes("unsupported provider")) {
+      return {
+        ok: false,
+        message: "Google sign-in isn’t switched on yet. Enable Google in Supabase → Authentication → Sign In / Providers.",
+      };
+    }
+    return { ok: false, message: error?.message ?? "Google linking could not start." };
+  }
+
+  redirect(data.url);
+}
 
 /**
  * Rolls the calendar token, which revokes every existing subscription.

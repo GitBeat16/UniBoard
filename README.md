@@ -19,7 +19,7 @@ subscribable calendar feed.
 | Framework | Next.js 16 (App Router, Turbopack) + TypeScript |
 | Styling | Tailwind v4, tokens in `src/app/globals.css` under `@theme` |
 | Data | Supabase — project `uniboard`, `ap-south-1` |
-| Auth | Password, magic link, or guest (Supabase anonymous user) |
+| Auth | Google, password, magic link, or guest (Supabase anonymous user) |
 | Motion | `motion` (Framer), system in `src/lib/motion.ts` |
 | Calendars | `ical.js` in, hand-rolled RFC 5545 out (`src/lib/calendar/`) |
 | Vision | `groq-sdk` — `qwen/qwen3.8-27b` for images, `openai/gpt-oss-120b` for PDF text |
@@ -34,6 +34,8 @@ still runs and explains itself, but two of the three ways in are dead ends:
 | Auth → **Leaked password protection: on** | Checks new passwords against HaveIBeenPwned. Worth doing now that the app has password sign-in. |
 | Email → **Confirm email: off** | Otherwise `signUp` returns no session and every new account has to go through the emailed confirmation, which is rate-limited to a couple an hour on the built-in SMTP. |
 | **Anonymous sign-ins: on** | Powers "Have a look around first". |
+| **Google: on**, with its client ID and secret | Powers "Continue with Google". See below. |
+| **Allow manual linking: on** | Lets a guest keep their account with "Keep it with Google" on Me. |
 
 Check the current state without the dashboard:
 
@@ -42,6 +44,23 @@ curl -s "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/settings" -H "apikey: $NEXT_PUBLIC_SU
 ```
 
 `mailer_autoconfirm` should be `true` and `external.anonymous_users` should be `true`.
+
+### Google sign-in
+
+The keys live in Supabase, not in this app's `.env` — the app only asks Supabase to
+start the sign-in and gets the student back at `/auth/callback`.
+
+1. Google Cloud Console → APIs & Services → **OAuth consent screen**: set it up
+   (External, app name UniBoard, your support email; scopes `email`, `profile`, `openid`).
+2. **Credentials → Create credentials → OAuth client ID**, type *Web application*:
+   - Authorised JavaScript origins: `https://uni-board-flax.vercel.app`, `http://localhost:3000`
+   - Authorised redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`
+     (Supabase shows the exact one on its Google provider page)
+3. Supabase → Authentication → Sign In / Providers → **Google**: paste the client ID and
+   secret, enable it. Turn on **Allow manual linking** on the same page for guests.
+4. The Redirect URLs above already cover `/auth/callback`; nothing else to add.
+
+`external.google` in the settings check above turns `true` once it's on.
 
 ## Deployment
 

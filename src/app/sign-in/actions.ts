@@ -39,6 +39,9 @@ function readable(message: string): string {
   if (m.includes("anonymous")) {
     return "Guest access is switched off for this project. Enable “Anonymous sign-ins” in Supabase → Authentication → Sign In / Providers.";
   }
+  if (m.includes("provider is not enabled") || m.includes("unsupported provider")) {
+    return "Google sign-in isn’t switched on yet. Enable Google in Supabase → Authentication → Sign In / Providers.";
+  }
   if (m.includes("signups not allowed") || m.includes("signup is disabled")) {
     return "New sign-ups are switched off for this project.";
   }
@@ -128,4 +131,35 @@ export async function continueAsGuest(
   if (error) return { ok: false, message: readable(error.message) };
 
   redirect("/");
+}
+
+/**
+ * "Continue with Google": Supabase runs the OAuth dance. This asks it for
+ * Google's consent URL (the PKCE verifier lands in a cookie on the way) and
+ * sends the browser there; Google returns to Supabase, which returns to
+ * /auth/callback with a code that route already knows how to exchange.
+ *
+ * The Google client ID and secret live in Supabase (Authentication →
+ * Sign In / Providers → Google), not in this app's environment.
+ */
+export async function signInWithGoogle(
+  _prev: AuthState,
+  _formData: FormData,
+): Promise<AuthState> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${await origin()}/auth/callback`,
+      // Always show the account chooser: students often have a personal and
+      // a college Google account on the same browser.
+      queryParams: { prompt: "select_account" },
+    },
+  });
+
+  if (error || !data.url) {
+    return { ok: false, message: readable(error?.message ?? "Google sign-in could not start.") };
+  }
+
+  redirect(data.url);
 }

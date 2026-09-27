@@ -12,6 +12,7 @@ import {
   createAccount,
   sendMagicLink,
   signIn,
+  signInWithGoogle,
   type AuthState,
 } from "@/app/sign-in/actions";
 
@@ -35,6 +36,7 @@ export function SignInView({ initialError }: { initialError?: string }) {
   function setMode(next: Mode) {
     setModeState(next);
     setShowGuestResult(false);
+    setShowGoogleResult(false);
   }
 
   const [signInState, signInAction, signingIn] = useActionState<AuthState, FormData>(
@@ -53,13 +55,23 @@ export function SignInView({ initialError }: { initialError?: string }) {
     continueAsGuest,
     null,
   );
+  // On success this leaves the page for Google, so only a failure comes back.
+  const [googleState, googleAction, goingToGoogle] = useActionState<AuthState, FormData>(
+    signInWithGoogle,
+    null,
+  );
+  const [showGoogleResult, setShowGoogleResult] = useState(false);
 
   const state =
     mode === "signin" ? signInState : mode === "register" ? registerState : linkState;
 
-  const notice = showGuestResult ? (guestState ?? state) : (state ?? asNotice(initialError));
+  const notice = showGoogleResult
+    ? (googleState ?? state)
+    : showGuestResult
+      ? (guestState ?? state)
+      : (state ?? asNotice(initialError));
 
-  const busy = signingIn || registering || sendingLink || enteringAsGuest;
+  const busy = signingIn || registering || sendingLink || enteringAsGuest || goingToGoogle;
 
   return (
     <Card className="relative w-full max-w-sm p-8">
@@ -172,6 +184,17 @@ export function SignInView({ initialError }: { initialError?: string }) {
       </div>
 
       <div className="mt-5 flex flex-col gap-2">
+        <form
+          action={googleAction}
+          onSubmit={() => {
+            setShowGoogleResult(true);
+            setShowGuestResult(false);
+          }}
+        >
+          <PillButton type="submit" variant="outline" size="lg" className="w-full" disabled={busy}>
+            {goingToGoogle ? "Opening Google…" : "Continue with Google"}
+          </PillButton>
+        </form>
         <button
           type="button"
           onClick={() => setMode(mode === "link" ? "signin" : "link")}
@@ -182,7 +205,13 @@ export function SignInView({ initialError }: { initialError?: string }) {
 
         {/* Guest mode is a real anonymous session, so nothing downstream has to
             special-case it — and the data survives if they sign up later. */}
-        <form action={guestAction} onSubmit={() => setShowGuestResult(true)}>
+        <form
+          action={guestAction}
+          onSubmit={() => {
+            setShowGuestResult(true);
+            setShowGoogleResult(false);
+          }}
+        >
           <PillButton
             type="submit"
             variant="outline"
@@ -194,7 +223,7 @@ export function SignInView({ initialError }: { initialError?: string }) {
           </PillButton>
         </form>
         <p className="text-caption text-muted">
-          Starts an anonymous account you can keep. Add an email any time from
+          Starts an anonymous account you can keep. Add Google or an email any time from
           your profile and everything comes with you.
         </p>
       </div>
