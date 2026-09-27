@@ -54,8 +54,8 @@ export const TOUR_SECONDS = TOUR_SCENES.reduce((n, s) => n + s.seconds, 0);
  * `node tools/measure-tour.mjs` and paste its numbers in.
  */
 export const TOUR_VIDEO = {
-  seconds: 27.5,
-  chapterAt: [0, 6, 10.6, 18.7, 22.5],
+  seconds: 24,
+  chapterAt: [0, 4.3, 8.9, 13.9, 19],
 } as const;
 
 /** Chapter marks for the landing page, in the order the video plays them. */

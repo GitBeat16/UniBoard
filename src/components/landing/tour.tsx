@@ -153,7 +153,9 @@ export function Tour() {
                 <p className="mt-1 text-label leading-snug text-ink/80">{scene.text}</p>
               </motion.div>
             </AnimatePresence>
-            <Logo size={24} animated={false} wordmark={false} className="mt-1 shrink-0" />
+            {/* ml-auto: the title is positioned absolutely, so the mark is the bar's
+                only flow item — without this it sat on the left, over the title. */}
+            <Logo size={24} animated={false} wordmark={false} className="ml-auto mt-1 shrink-0" />
           </div>
 
           <BottomNav always activeHref={shot.tab} />

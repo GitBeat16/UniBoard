@@ -4,6 +4,18 @@ import { Logo } from "@/components/brand/logo";
 import { ShapeFrame } from "@/components/board/card-shape";
 import { Pin } from "@/components/board/pin";
 import { TourVideo } from "@/components/landing/tour-video";
+import {
+  ClosingHeadline,
+  Eyebrow,
+  FeatureBand,
+  HeroHeadline,
+  MagneticLink,
+  Numbers,
+  RotatingLine,
+} from "@/components/landing/landing-bits";
+import { FloraSolo } from "@/components/flora/flora-says";
+import ClickSpark from "@/components/reactbits/ClickSpark";
+import SpotlightCard from "@/components/reactbits/SpotlightCard";
 import { BlobBackground } from "@/components/ui/blob-background";
 import {
   IconAdvisor,
@@ -77,146 +89,188 @@ const FEATURES: Array<{ icon: typeof IconTimetable; tone: Tone; title: string; t
   },
 ];
 
+/** True things, counted: nothing here is a claim about anybody else. */
+const NUMBERS = [
+  { to: 3, label: "ways to bring your timetable in" },
+  { to: 2, label: "taps to log a spend" },
+  { to: 1, label: "board for everything with a date" },
+  { to: 0, label: "trackers, and no ads" },
+];
+
 export default function WelcomePage() {
   const chapters = tourChapters();
 
   return (
-    <div className="relative min-h-dvh overflow-x-clip">
-      <BlobBackground variant="calm" />
+    // Sparks on every click — the page's one bit of pure play.
+    <ClickSpark sparkColor="#f2846b" sparkSize={9} sparkRadius={18} sparkCount={8} duration={420}>
+      <div className="relative min-h-dvh overflow-x-clip">
+        <BlobBackground variant="calm" />
 
-      {/* ------------------------------------------------------------ header */}
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 pt-6 md:px-8 lg:px-10">
-        <Link href="/welcome" className="rounded-chip focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink">
-          <Logo size={40} />
-        </Link>
-        <nav className="flex items-center gap-2">
-          <PillLink href="/sign-in" variant="ghost" size="sm" className="hidden sm:inline-flex">
-            Sign in
-          </PillLink>
-          <PillLink href="/sign-in" size="sm">
-            Get started
-          </PillLink>
-        </nav>
-      </header>
+        {/* Without JavaScript the headline would stay blurred out: show it plain. */}
+        <noscript>
+          <style>{`.blur-text span{opacity:1!important;filter:none!important;transform:none!important}`}</style>
+        </noscript>
 
-      <main>
-        {/* ------------------------------------------------------------ hero */}
-        <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-5 pb-16 pt-14 md:px-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:px-10 lg:pt-20">
-          <div className="max-w-2xl">
-            <p className="text-caption font-semibold uppercase text-ink/80">For students · free</p>
-            <h1 className="mt-4 text-[2.6rem] leading-[1.02] tracking-tight sm:text-[3.4rem] lg:text-[4rem]">
-              <span className="block font-normal">Your whole uni day,</span>
-              <span className="block font-bold">on one board.</span>
-            </h1>
-            <p className="mt-6 max-w-xl text-body text-ink/80 sm:text-[1.125rem] sm:leading-relaxed">
-              UniBoard reads your timetable, keeps count of your attendance, gives you an honest
-              go-or-skip call, pins everything with a date to a soft board, and turns one budget
-              into what today can take.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <PillLink href="/sign-in">Get started</PillLink>
-              <PillLink href="#tour" variant="soft">
-                Watch the tour
-              </PillLink>
+        {/* ---------------------------------------------------------- header */}
+        <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 pt-6 md:px-8 lg:px-10">
+          <Link href="/welcome" className="rounded-chip focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink">
+            <Logo size={40} />
+          </Link>
+          <nav className="flex items-center gap-2">
+            <PillLink href="/sign-in" variant="ghost" size="sm" className="hidden sm:inline-flex">
+              Sign in
+            </PillLink>
+            <PillLink href="/sign-in" size="sm">
+              Get started
+            </PillLink>
+          </nav>
+        </header>
+
+        <main>
+          {/* ------------------------------------------------------------ hero */}
+          <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-5 pb-16 pt-12 md:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] lg:gap-16 lg:px-10 lg:pb-24 lg:pt-20">
+            <div className="max-w-2xl">
+              <Eyebrow>For students · free</Eyebrow>
+              <HeroHeadline />
+              <RotatingLine />
+              <p className="mt-5 max-w-xl text-body text-ink/80 sm:text-[1.1rem] sm:leading-relaxed">
+                UniBoard reads your timetable, keeps count of your attendance, gives you an honest
+                go-or-skip call, pins everything with a date to a soft board, and turns one budget
+                into what today can take.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <MagneticLink href="/sign-in">Get started — it&rsquo;s free</MagneticLink>
+                <MagneticLink href="#tour" variant="soft">
+                  Watch the tour
+                </MagneticLink>
+              </div>
+              <p className="mt-4 text-label text-ink/70">
+                No email needed to look around — start as a guest and keep everything later.
+              </p>
             </div>
-            <p className="mt-4 text-label text-ink/70">
-              No email needed to look around — start as a guest and keep everything later.
-            </p>
-          </div>
 
-          <HeroBoard className="hidden lg:block" />
-        </section>
+            {/* The board, on every screen: it is the product in one picture. */}
+            <HeroBoard className="mx-auto w-full max-w-[27rem] lg:mx-0" />
+          </section>
 
-        {/* ------------------------------------------------------------ tour */}
-        <section id="tour" className="scroll-mt-8 bg-paper/60 py-20 backdrop-blur-sm">
-          <div className="mx-auto w-full max-w-6xl px-5 md:px-8 lg:px-10">
-            <p className="text-caption font-semibold uppercase text-muted">
-              The tour · {Math.round(TOUR_VIDEO.seconds)} seconds
-            </p>
-            <h2 className="mt-3 text-h1 sm:text-[2.25rem] sm:leading-tight">
-              <span className="font-normal">Everything, </span>
-              <span className="font-bold">in one loop.</span>
-            </h2>
-            <TourVideo chapters={chapters} className="mt-12" />
-          </div>
-        </section>
+          {/* ---------------------------------------------------- the band */}
+          <FeatureBand />
 
-        {/* -------------------------------------------------------- features */}
-        <section className="mx-auto w-full max-w-6xl px-5 py-20 md:px-8 lg:px-10">
-          <h2 className="text-h1 sm:text-[2.25rem] sm:leading-tight">
-            <span className="block font-normal">What&rsquo;s on</span>
-            <span className="block font-bold">the board.</span>
-          </h2>
-          <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map(({ icon: Icon, tone, title, text }) => (
-              <li key={title} className="rounded-card bg-paper p-6 shadow-soft">
-                <span className={cn("grid size-12 place-items-center rounded-full", toneSoft[tone])}>
-                  <Icon className="size-7" />
-                </span>
-                <h3 className="mt-4 text-body font-bold">{title}</h3>
-                <p className="mt-1.5 text-label leading-relaxed text-muted">{text}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
+          {/* ------------------------------------------------------------ tour */}
+          <section id="tour" className="scroll-mt-8 py-20 lg:py-28">
+            <div className="mx-auto w-full max-w-5xl px-5 md:px-8 lg:px-10">
+              <div className="mx-auto max-w-2xl text-center">
+                <p className="text-caption font-semibold uppercase text-muted">
+                  The tour · {Math.round(TOUR_VIDEO.seconds)} seconds
+                </p>
+                <h2 className="mt-3 text-h1 sm:text-[2.4rem] sm:leading-tight">
+                  <span className="font-normal">Everything, </span>
+                  <span className="font-bold">in one loop.</span>
+                </h2>
+                <p className="mt-3 text-body text-muted">
+                  The real app, recorded. Tap a chapter to jump to it.
+                </p>
+              </div>
+              <TourVideo chapters={chapters} className="mt-12 lg:justify-center" />
+            </div>
+          </section>
 
-        {/* -------------------------------------------------------- privacy */}
-        <section className="mx-auto w-full max-w-6xl px-5 pb-20 md:px-8 lg:px-10">
-          <div className="grid gap-8 rounded-card bg-ink p-8 text-paper sm:p-10 lg:grid-cols-3">
-            <div>
-              <h2 className="text-h1">
-                <span className="block font-normal">Yours,</span>
-                <span className="block font-bold">and only yours.</span>
+          {/* --------------------------------------------------------- numbers */}
+          <section className="border-y border-hairline/80 bg-paper/70 py-16 backdrop-blur-sm">
+            <div className="mx-auto w-full max-w-5xl px-5 md:px-8 lg:px-10">
+              <Numbers items={NUMBERS} />
+            </div>
+          </section>
+
+          {/* -------------------------------------------------------- features */}
+          <section className="py-20 lg:py-28">
+            <div className="mx-auto w-full max-w-6xl px-5 md:px-8 lg:px-10">
+              <h2 className="text-h1 sm:text-[2.4rem] sm:leading-tight">
+                <span className="block font-normal">What&rsquo;s on</span>
+                <span className="block font-bold">the board.</span>
               </h2>
+              <p className="mt-3 max-w-lg text-body text-muted">
+                Eight things, one app. Swipe through on a phone.
+              </p>
             </div>
-            <ul className="grid gap-5 text-label leading-relaxed text-paper/80 lg:col-span-2 sm:grid-cols-2">
-              <li>
-                <span className="block text-body font-semibold text-paper">Private by default</span>
-                Every row is locked to your account in the database itself, not just hidden by the app.
-              </li>
-              <li>
-                <span className="block text-body font-semibold text-paper">No tracking</span>
-                Your campus pin is set once, by you. Location is never watched in the background.
-              </li>
-              <li>
-                <span className="block text-body font-semibold text-paper">Anonymous sharing</span>
-                Share a campus event and classmates see the event — never who posted it.
-              </li>
-              <li>
-                <span className="block text-body font-semibold text-paper">Not a proxy</span>
-                UniBoard never marks attendance anywhere official. It mirrors reality for your planning.
-              </li>
+            {/* A swipeable row on a phone — eight cards stacked would be a long
+                scroll of sameness — and a grid once there is room. */}
+            <ul className="mx-auto mt-10 flex w-full max-w-6xl snap-x snap-mandatory gap-4 overflow-x-auto scroll-px-5 px-5 pb-4 [scrollbar-width:none] md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:px-8 lg:grid-cols-4 lg:px-10 [&::-webkit-scrollbar]:hidden">
+              {FEATURES.map(({ icon: Icon, tone, title, text }) => (
+                <li key={title} className="w-[16.5rem] shrink-0 snap-start md:w-auto">
+                  <SpotlightCard
+                    spotlightColor="rgba(242, 132, 107, 0.16)"
+                    className="h-full rounded-card border border-hairline bg-paper p-6 shadow-soft transition-shadow hover:shadow-lift"
+                  >
+                    <span className={cn("relative grid size-12 place-items-center rounded-full", toneSoft[tone])}>
+                      <Icon className="size-7" />
+                    </span>
+                    <h3 className="relative mt-4 text-body font-bold">{title}</h3>
+                    <p className="relative mt-1.5 text-label leading-relaxed text-muted">{text}</p>
+                  </SpotlightCard>
+                </li>
+              ))}
             </ul>
+          </section>
+
+          {/* -------------------------------------------------------- privacy */}
+          <section className="mx-auto w-full max-w-6xl px-5 pb-20 md:px-8 lg:px-10 lg:pb-28">
+            <SpotlightCard
+              spotlightColor="rgba(255, 255, 255, 0.08)"
+              className="grid gap-8 rounded-card bg-ink p-8 text-paper sm:p-10 lg:grid-cols-3"
+            >
+              <div className="relative">
+                <h2 className="text-h1">
+                  <span className="block font-normal">Yours,</span>
+                  <span className="block font-bold">and only yours.</span>
+                </h2>
+              </div>
+              <ul className="relative grid gap-5 text-label leading-relaxed text-paper/80 sm:grid-cols-2 lg:col-span-2">
+                <li>
+                  <span className="block text-body font-semibold text-paper">Private by default</span>
+                  Every row is locked to your account in the database itself, not just hidden by the app.
+                </li>
+                <li>
+                  <span className="block text-body font-semibold text-paper">No tracking</span>
+                  Your campus pin is set once, by you. Location is never watched in the background.
+                </li>
+                <li>
+                  <span className="block text-body font-semibold text-paper">Anonymous sharing</span>
+                  Share a campus event and classmates see the event — never who posted it.
+                </li>
+                <li>
+                  <span className="block text-body font-semibold text-paper">Not a proxy</span>
+                  UniBoard never marks attendance anywhere official. It mirrors reality for your planning.
+                </li>
+              </ul>
+            </SpotlightCard>
+          </section>
+
+          {/* -------------------------------------------------------------- cta */}
+          <section className="mx-auto flex w-full max-w-6xl flex-col items-center px-5 pb-24 text-center md:px-8 lg:px-10">
+            <FloraSolo mood="cheer" action="wave" size="lg" />
+            <ClosingHeadline />
+            <p className="mt-3 max-w-md text-body text-ink/80">
+              Import your timetable in under a minute. Start as a guest if you&rsquo;d rather not sign up yet.
+            </p>
+            <div className="mt-8">
+              <MagneticLink href="/sign-in">Get started</MagneticLink>
+            </div>
+          </section>
+        </main>
+
+        <footer className="border-t border-hairline/80">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-8 text-label text-muted md:px-8 lg:px-10">
+            <Logo size={28} animated={false} wordmarkClassName="text-body" />
+            <span>Built for students. Map data © OpenStreetMap contributors. Animations from React Bits.</span>
           </div>
-        </section>
-
-        {/* -------------------------------------------------------------- cta */}
-        <section className="mx-auto flex w-full max-w-6xl flex-col items-center px-5 pb-24 text-center md:px-8 lg:px-10">
-          <Logo size={56} wordmark={false} />
-          <h2 className="mt-6 text-h1 sm:text-[2.25rem] sm:leading-tight">
-            <span className="font-normal">Pin your </span>
-            <span className="font-bold">first week.</span>
-          </h2>
-          <p className="mt-3 max-w-md text-body text-ink/80">
-            Import your timetable in under a minute. Start as a guest if you&rsquo;d rather not sign up yet.
-          </p>
-          <PillLink href="/sign-in" className="mt-8">
-            Get started
-          </PillLink>
-        </section>
-      </main>
-
-      <footer className="border-t border-hairline/80">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-8 text-label text-muted md:px-8 lg:px-10">
-          <Logo size={28} animated={false} wordmarkClassName="text-body" />
-          <span>Built for students. Map data © OpenStreetMap contributors.</span>
-        </div>
-      </footer>
-    </div>
+        </footer>
+      </div>
+    </ClickSpark>
   );
 }
 
-/** A still piece of the real board for the hero, on laptops. */
+/** A still piece of the real board for the hero — fluid, so it fits a phone. */
 function HeroBoard({ className }: { className?: string }) {
   const cards = [
     { shape: "index", tone: "sky", tilt: -3, kicker: "Hand-in", title: "DBMS assignment 3", when: "Tomorrow, 11:59 PM" },
@@ -226,8 +280,8 @@ function HeroBoard({ className }: { className?: string }) {
   ] as const;
 
   return (
-    <div className={cn("board-frame w-[27rem] rotate-1", className)} aria-hidden="true">
-      <div className="felt grid grid-cols-2 gap-x-5 gap-y-7 px-6 pb-8 pt-10">
+    <div className={cn("board-frame rotate-1", className)} aria-hidden="true">
+      <div className="felt grid grid-cols-2 gap-x-3 gap-y-6 px-4 pb-7 pt-9 sm:gap-x-5 sm:gap-y-7 sm:px-6 sm:pb-8 sm:pt-10">
         {cards.map((c, i) => {
           const color = `var(--color-${c.tone})`;
           return (

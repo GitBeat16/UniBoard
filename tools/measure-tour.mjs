@@ -33,6 +33,8 @@ try {
   for (let i = 1; i < frames.length; i++) {
     let diff = 0;
     for (let p = 0; p < frames[i].length; p++) diff += Math.abs(frames[i][p] - frames[i - 1][p]);
+    // The first second is the first scene fading in, not a new scene.
+    if (i < FPS) continue;
     if (diff / frames[i].length > 6 && (changes.length === 0 || i - changes.at(-1) > FPS)) {
       changes.push(i);
     }

@@ -331,12 +331,26 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
 - **The landing page is the front door.** A signed-out visitor at `/` is sent to
   `/welcome`, not to the sign-in form; a deep link to a signed-in screen still goes to
   `/sign-in`. `/welcome` and `/media` are public paths in `src/lib/supabase/middleware.ts`.
+- **The landing page's motion comes from React Bits** (reactbits.dev, by David Haz;
+  MIT + Commons Clause — fine inside an app, not for reselling the components). The
+  copies live in `src/components/reactbits/` with the notice and `LICENSE.md` beside
+  them, and each file says what was changed for UniBoard. Only components that need
+  nothing beyond `motion` were taken — no GSAP, three.js or WebGL — so the page adds
+  no dependencies: BlurText (the headline), RotatingText ("it keeps your ___
+  straight"), ShinyText (the eyebrow), ScrollVelocity (the felt band), CountUp (the
+  numbers), SpotlightCard (the feature and privacy cards), Magnet (the calls to
+  action) and ClickSpark (sparks on click). `landing-bits.tsx` dresses them in
+  UniBoard's colours; the page itself stays a static server component. Without
+  JavaScript a `<noscript>` rule un-blurs the headline; under reduced motion the
+  band holds still and the buttons stop leaning. RotatingText was measured, not
+  eyeballed: with its default spring the word was blank a third of every cycle.
 - **The tour video is a recording of the real app**, not a mock-up: `/preview/tour`
   (dev only) plays the screens in `src/lib/tour.ts` with sample data, and Playwright
   records it at 2× into `public/media/uniboard-tour.{mp4,webm}` plus a poster frame.
-  Re-record: start `next dev`, capture `/preview/tour` at 780×1688 for one full loop,
-  trim to the loop, then run `node tools/measure-tour.mjs` and paste the numbers into
-  `TOUR_VIDEO` in `src/lib/tour.ts`. Those chapter marks are MEASURED, never computed:
+  Re-record: start `next dev`, run `node tools/record-tour.mjs [base-url]` (it warms up
+  for one loop, watches the caption from inside the page, and keeps the second loop),
+  then run `node tools/measure-tour.mjs` and paste the numbers into `TOUR_VIDEO` in
+  `src/lib/tour.ts`. Those chapter marks are MEASURED, never computed:
   a screen rendering for the first time costs real seconds, so the recording runs longer
   than the script, and the landing page's chapters have to match the file.
 - **The logo is the product in miniature** — a felt board with one pinned card
