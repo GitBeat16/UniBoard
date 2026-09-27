@@ -1,78 +1,49 @@
 /**
- * The scenes of the landing-page tour video, in order.
+ * The screens of the landing-page tour, in order.
  *
- * One list, read by two places: /preview/tour plays these scenes so the
- * video can be recorded from the real components, and the landing page
- * builds its chapter list from the same durations — so the chapters always
- * line up with the recording. Change a duration here, re-record, done.
+ * One list, read by two places: /preview/tour?scene=<id> draws each screen
+ * from the real components with sample data, so its still can be captured
+ * (tools/capture-tour.mjs), and the landing page's circular gallery shows
+ * those stills with the titles below. Add a scene here, capture, done.
  */
 export const TOUR_SCENES = [
   {
     id: "import",
     title: "Timetable in",
     text: "Paste a calendar link, upload the file, or snap the grid on the notice board.",
-    seconds: 4.5,
   },
   {
     id: "attendance",
     title: "Attendance that adds up",
     text: "Every module's rate, and how many more you can miss before the line.",
-    seconds: 4.5,
   },
   {
     id: "advisor",
     title: "Go or skip?",
     text: "An honest call with its reasons. Some classes it will never let you skip.",
-    seconds: 5,
   },
   {
     id: "board",
     title: "Your soft board",
     text: "Hand-ins, exams and campus events, pinned in the order they matter.",
-    seconds: 5,
   },
   {
     id: "money",
     title: "Money and food",
     text: "What today can take, and cafés ranked by the walk from class.",
-    seconds: 5,
   },
 ] as const;
 
 export type TourSceneId = (typeof TOUR_SCENES)[number]["id"];
 
-export const TOUR_SECONDS = TOUR_SCENES.reduce((n, s) => n + s.seconds, 0);
+/** The phone a still is drawn at, in CSS pixels. Captured at 2×. */
+export const TOUR_STAGE = { width: 390, height: 700 } as const;
 
-/**
- * Where each scene actually starts in public/media/uniboard-tour.*, and how
- * long one loop of it runs.
- *
- * MEASURED FROM THE FILE, not computed from the durations above: a screen
- * rendering for the first time costs real seconds, so the recording runs
- * longer than the script. The landing page's chapters have to match the video
- * a student is watching, so they come from here. After re-recording, run
- * `node tools/measure-tour.mjs` and paste its numbers in.
- */
-export const TOUR_VIDEO = {
-  seconds: 24,
-  chapterAt: [0, 4.3, 8.9, 13.9, 19],
-} as const;
-
-/** Chapter marks for the landing page, in the order the video plays them. */
-export function tourChapters() {
-  return TOUR_SCENES.map((s, i) => ({
-    at: TOUR_VIDEO.chapterAt[i] ?? 0,
-    title: s.title,
-    text: s.text,
-  }));
+/** Where a scene's still lives in public/. */
+export function tourStill(id: TourSceneId) {
+  return `/media/tour/${id}.webp`;
 }
 
-/** Scene boundaries while the tour PLAYS (the /preview/tour page). */
-export function tourScriptChapters() {
-  let at = 0;
-  return TOUR_SCENES.map((s) => {
-    const chapter = { at, title: s.title, text: s.text };
-    at += s.seconds;
-    return chapter;
-  });
+export function isTourScene(id: string | undefined): id is TourSceneId {
+  return TOUR_SCENES.some((s) => s.id === id);
 }

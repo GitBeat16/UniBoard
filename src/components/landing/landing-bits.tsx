@@ -7,6 +7,7 @@ import CountUp from "@/components/reactbits/CountUp";
 import Magnet from "@/components/reactbits/Magnet";
 import RotatingText from "@/components/reactbits/RotatingText";
 import ShinyText from "@/components/reactbits/ShinyText";
+import TextPressure from "@/components/reactbits/TextPressure";
 import { ScrollVelocity } from "@/components/reactbits/ScrollVelocity";
 import { cn } from "@/lib/cn";
 
@@ -32,27 +33,36 @@ export function Eyebrow({ children }: { children: string }) {
 }
 
 /**
- * The headline arrives a word at a time, out of a blur. Two BlurTexts inside
- * one <h1>, so it is still a single heading to a screen reader and a crawler.
+ * The headline, pressed: each letter swells, widens and leans toward the
+ * pointer (React Bits TextPressure), and on a phone the pressure drifts
+ * across on its own. Two lines, each justified to the column's width — so
+ * "on one board." comes out larger than the line above it.
+ *
+ * The letters are split into spans for the effect, so a screen reader gets
+ * the sentence once, from the visually hidden h1.
  */
-export function HeroHeadline() {
+export function HeroHeadline({ fontFamily }: { fontFamily: string }) {
+  const line = {
+    fontFamily,
+    flex: true,
+    alpha: false,
+    stroke: false,
+    width: true,
+    weight: true,
+    italic: true,
+    textColor: "#111111",
+    strokeColor: "#ff0000",
+    minFontSize: 36,
+    as: "p",
+  } as const;
   return (
-    <h1 className="mt-4 text-[2.5rem] leading-[1.04] tracking-tight sm:text-[3.4rem] lg:text-[3.6rem] xl:text-[4rem]">
-      <BlurText
-        text={"Your whole uni\u00A0day,"}
-        delay={90}
-        direction="bottom"
-        className="font-normal"
-      />
-      <BlurText
-        text="on one board."
-        delay={120}
-        direction="bottom"
-        className="font-bold"
-        // Follows once the first line is most of the way in.
-        startDelay={380}
-      />
-    </h1>
+    <>
+      <h1 className="sr-only">Your whole uni day, on one board.</h1>
+      <div aria-hidden="true" className="mt-4 flex flex-col gap-1 leading-none">
+        <TextPressure text="Your whole uni day," {...line} />
+        <TextPressure text="on one board." {...line} />
+      </div>
+    </>
   );
 }
 

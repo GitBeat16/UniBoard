@@ -98,7 +98,7 @@ npm run dev
 ## Layout
 
 ```
-src/app/welcome/         the public landing page — what UniBoard is, and the tour video
+src/app/welcome/         the public landing page — what UniBoard is, and the tour gallery
 src/app/(app)/           authenticated shell — bottom nav on phones, sidebar on laptops
 src/app/sign-in/         magic-link sign-in
 src/app/auth/            callback + sign-out route handlers
@@ -334,25 +334,28 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
 - **The landing page's motion comes from React Bits** (reactbits.dev, by David Haz;
   MIT + Commons Clause — fine inside an app, not for reselling the components). The
   copies live in `src/components/reactbits/` with the notice and `LICENSE.md` beside
-  them, and each file says what was changed for UniBoard. Only components that need
-  nothing beyond `motion` were taken — no GSAP, three.js or WebGL — so the page adds
-  no dependencies: BlurText (the headline), RotatingText ("it keeps your ___
+  them, and each file says what was changed for UniBoard. Most need nothing beyond
+  `motion`: BlurText (the closing line), RotatingText ("it keeps your ___
   straight"), ShinyText (the eyebrow), ScrollVelocity (the felt band), CountUp (the
   numbers), SpotlightCard (the feature and privacy cards), Magnet (the calls to
   action) and ClickSpark (sparks on click). `landing-bits.tsx` dresses them in
   UniBoard's colours; the page itself stays a static server component. Without
-  JavaScript a `<noscript>` rule un-blurs the headline; under reduced motion the
-  band holds still and the buttons stop leaning. RotatingText was measured, not
+  JavaScript a `<noscript>` rule un-blurs the closing line; under reduced motion the
+  band holds still and the buttons stop leaning. Two go further:
+  - **TextPressure** (the hero headline, "Your whole uni day, on one board.", one
+    instance per line) needs a variable font; Roboto Flex is self-hosted with
+    `next/font` on `/welcome` only, never fetched at runtime. Its original global
+    `.flex` class is renamed — it would have overridden Tailwind's `flex` everywhere.
+  - **CircularGallery** (the tour) is WebGL, through `ogl` (the page's one
+    added dependency). Its input is scoped to the gallery — the original took the
+    wheel and drags from the whole window — and a vertical scroll passes through
+    to the page. If WebGL fails, the same stills show in a plain swipeable row. RotatingText was measured, not
   eyeballed: with its default spring the word was blank a third of every cycle.
-- **The tour video is a recording of the real app**, not a mock-up: `/preview/tour`
-  (dev only) plays the screens in `src/lib/tour.ts` with sample data, and Playwright
-  records it at 2× into `public/media/uniboard-tour.{mp4,webm}` plus a poster frame.
-  Re-record: start `next dev`, run `node tools/record-tour.mjs [base-url]` (it warms up
-  for one loop, watches the caption from inside the page, and keeps the second loop),
-  then run `node tools/measure-tour.mjs` and paste the numbers into `TOUR_VIDEO` in
-  `src/lib/tour.ts`. Those chapter marks are MEASURED, never computed:
-  a screen rendering for the first time costs real seconds, so the recording runs longer
-  than the script, and the landing page's chapters have to match the file.
+- **The tour stills are the real app**, not mock-ups: `/preview/tour?scene=<id>`
+  (dev only) draws each screen in `src/lib/tour.ts` with sample data, and
+  `node tools/capture-tour.mjs [base-url]` (with `next dev` running; needs Playwright and
+  ffmpeg) photographs each at 2× into `public/media/tour/<id>.webp`. Add a scene to the
+  list, give it a framing in `src/components/landing/tour.tsx`, capture, done.
 - **The logo is the product in miniature** — a felt board with one pinned card
   (`src/components/brand/logo.tsx`). It animates once on mount and again on hover, and
   stops moving entirely under `prefers-reduced-motion`. `src/app/icon.svg` is the same

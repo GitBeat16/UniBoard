@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { Roboto_Flex } from "next/font/google";
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { ShapeFrame } from "@/components/board/card-shape";
 import { Pin } from "@/components/board/pin";
-import { TourVideo } from "@/components/landing/tour-video";
+import { TourGallery } from "@/components/landing/tour-gallery";
 import {
   ClosingHeadline,
   Eyebrow,
@@ -30,7 +31,6 @@ import {
 import { PillLink } from "@/components/ui/pill-button";
 import { cn } from "@/lib/cn";
 import { toneSoft, type Tone } from "@/lib/tones";
-import { TOUR_VIDEO, tourChapters } from "@/lib/tour";
 
 export const metadata: Metadata = {
   title: "UniBoard — your whole uni day, on one board",
@@ -89,6 +89,18 @@ const FEATURES: Array<{ icon: typeof IconTimetable; tone: Tone; title: string; t
   },
 ];
 
+/**
+ * The headline's font. TextPressure moves weight, width and slant per letter,
+ * so it needs a variable font with those axes. Self-hosted by next/font (the
+ * component would otherwise fetch it from Google on every visit), and only
+ * this page loads it.
+ */
+const pressureFont = Roboto_Flex({
+  subsets: ["latin"],
+  axes: ["wdth", "slnt"],
+  display: "swap",
+});
+
 /** True things, counted: nothing here is a claim about anybody else. */
 const NUMBERS = [
   { to: 3, label: "ways to bring your timetable in" },
@@ -98,8 +110,6 @@ const NUMBERS = [
 ];
 
 export default function WelcomePage() {
-  const chapters = tourChapters();
-
   return (
     // Sparks on every click — the page's one bit of pure play.
     <ClickSpark sparkColor="#f2846b" sparkSize={9} sparkRadius={18} sparkCount={8} duration={420}>
@@ -131,7 +141,7 @@ export default function WelcomePage() {
           <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-5 pb-16 pt-12 md:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] lg:gap-16 lg:px-10 lg:pb-24 lg:pt-20">
             <div className="max-w-2xl">
               <Eyebrow>For students · free</Eyebrow>
-              <HeroHeadline />
+              <HeroHeadline fontFamily={pressureFont.style.fontFamily} />
               <RotatingLine />
               <p className="mt-5 max-w-xl text-body text-ink/80 sm:text-[1.1rem] sm:leading-relaxed">
                 UniBoard reads your timetable, keeps count of your attendance, gives you an honest
@@ -141,7 +151,7 @@ export default function WelcomePage() {
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <MagneticLink href="/sign-in">Get started — it&rsquo;s free</MagneticLink>
                 <MagneticLink href="#tour" variant="soft">
-                  Watch the tour
+                  Take the tour
                 </MagneticLink>
               </div>
               <p className="mt-4 text-label text-ink/70">
@@ -158,21 +168,17 @@ export default function WelcomePage() {
 
           {/* ------------------------------------------------------------ tour */}
           <section id="tour" className="scroll-mt-8 py-20 lg:py-28">
-            <div className="mx-auto w-full max-w-5xl px-5 md:px-8 lg:px-10">
-              <div className="mx-auto max-w-2xl text-center">
-                <p className="text-caption font-semibold uppercase text-muted">
-                  The tour · {Math.round(TOUR_VIDEO.seconds)} seconds
-                </p>
-                <h2 className="mt-3 text-h1 sm:text-[2.4rem] sm:leading-tight">
-                  <span className="font-normal">Everything, </span>
-                  <span className="font-bold">in one loop.</span>
-                </h2>
-                <p className="mt-3 text-body text-muted">
-                  The real app, recorded. Tap a chapter to jump to it.
-                </p>
-              </div>
-              <TourVideo chapters={chapters} className="mt-12 lg:justify-center" />
+            <div className="mx-auto max-w-2xl px-5 text-center md:px-8">
+              <p className="text-caption font-semibold uppercase text-muted">The tour · five screens</p>
+              <h2 className="mt-3 text-h1 sm:text-[2.4rem] sm:leading-tight">
+                <span className="font-normal">Everything, </span>
+                <span className="font-bold">on one turn.</span>
+              </h2>
+              <p className="mt-3 text-body text-muted">
+                The real app, with sample data. Drag it round, or let it drift.
+              </p>
             </div>
+            <TourGallery className="mt-2 lg:mt-4" />
           </section>
 
           {/* --------------------------------------------------------- numbers */}

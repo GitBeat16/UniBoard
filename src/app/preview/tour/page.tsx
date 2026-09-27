@@ -1,16 +1,23 @@
 import { notFound } from "next/navigation";
-import { Tour } from "@/components/landing/tour";
+import { TourStill } from "@/components/landing/tour";
+import { isTourScene } from "@/lib/tour";
 
 /**
- * The stage the landing-page video is recorded from: the real screens, with
- * sample data, playing in order. Dev only — it is how the asset in
- * public/media is made, not something a student ever sees.
+ * The stage the landing page's tour stills are captured from: one real
+ * screen, with sample data, at /preview/tour?scene=<id>. Dev only — it is how
+ * the images in public/media/tour are made, not something a student sees.
  *
- * Record with the script in tools/record-tour.mjs.
+ * Capture them all with tools/capture-tour.mjs.
  */
 export const dynamic = "force-dynamic";
 
-export default function TourPage() {
+export default async function TourPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ scene?: string }>;
+}) {
   if (process.env.NODE_ENV !== "development") notFound();
-  return <Tour />;
+  const { scene } = await searchParams;
+  if (!isTourScene(scene)) notFound();
+  return <TourStill scene={scene} />;
 }
