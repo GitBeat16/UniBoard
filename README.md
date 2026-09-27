@@ -205,9 +205,30 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
   by default and off under reduced motion; iPhones do not let web pages
   vibrate, so there it is a no-op. Sound stays off until asked for. Both
   switches are on Me.
-- **Flora is a reward for waiting, not a toll.** Every loading screen shows
-  nothing extra for the first 400 ms, so a fast load goes straight from
-  skeleton to page and she is never seen. Past that she walks on with a trick
+- **Every subject is correctable, because the photo is not perfect.** Tap a
+  subject's attendance card for its sheet: name, code, colour, threshold, and
+  the college's figure (all three fields or none — a count without a date
+  cannot be carried forward; `src/lib/attendance/subject-form.ts`, tested). A
+  figure typed by hand is recorded as `hand`. Renaming onto another subject's
+  name is refused and points at merge instead. **Merge** is one Postgres
+  function, `merge_modules()` (security invoker, one transaction): classes and
+  their marks, hand-ins and exams move across, the college figure and code
+  survive, then the empty duplicate goes — done in several requests, a failure
+  halfway could let the cascade take classes with it. Delete asks twice. A
+  single class's mark can be changed to any status, or cleared.
+- **The loader is drawn on the server and timed by CSS.** On a first load the
+  app's JavaScript arrives after the page, so a JS-timed Flora never got her
+  turn. Now she is in the HTML with a fixed first trick (`defaultActivity`) and
+  `.flora-reveal` fades her in 150 ms after she lands; the browser swaps in a
+  random trick before then. Opening the app shows a splash once per browser
+  session: server-drawn, hidden before paint on a same-session reload by an
+  inline script that only sets `data-splash` on `<html>` (hence
+  `suppressHydrationWarning` there), lifted when the app is ready and at least
+  1.2 s have passed — and lifted by CSS after 6 s if the JavaScript never comes.
+  The key lives in `src/lib/flora/splash.ts`, a plain module: exported from a
+  client file it reached the server layout as a client reference, not a string.
+- **Flora keeps you company while a screen loads.** She fades in 150 ms after
+  a loading screen lands, so an instant one does not flash her. Past that she walks on with a trick
   fitted to the screen (`src/lib/flora/loading.ts` picks it; the drawing is
   `src/components/flora/loading/scenes.tsx`): watering, pinning, counting,
   juggling and reading on Home; reading or counting on Timetable; pinning or

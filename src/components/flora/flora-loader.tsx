@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/cn";
-import { EASE_SOFT, SOFT_SPRING, press } from "@/lib/motion";
+import { EASE_SOFT, press } from "@/lib/motion";
 import {
   ACTIVITY,
+  defaultActivity,
   firstActivity,
   firstTip,
   nextActivity,
@@ -17,8 +18,6 @@ import { useFloraEnabled, useFloraSound } from "@/lib/flora/preference";
 import { play, playTap, unlock } from "@/lib/flora/sound";
 import { Scene, StillScene } from "./loading/scenes";
 
-/** Long enough that a quick load never shows her at all. */
-const DELAY_MS = 400;
 const TIP_MS = 3800;
 
 const WHAT: Record<LoadingScreen, string> = {
@@ -31,9 +30,9 @@ const WHAT: Record<LoadingScreen, string> = {
 /**
  * Flora, keeping you company while a screen loads.
  *
- * She is a reward for waiting, not a toll: nothing appears for the first
- * 400 ms, so a fast load goes straight from the skeleton to the page and she
- * is never seen. Past that she walks on with a trick fitted to the screen —
+ * She fades in after a beat (150 ms, in CSS) so an instant load does not
+ * flash her, and she is drawn on the server so she is there even before the
+ * app's JavaScript has arrived. Past that she walks on with a trick fitted to the screen —
  * pinning on the Board, counting coins on Money — and a tip underneath about
  * something the app really does. Tap her and she does another trick.
  *
@@ -51,28 +50,28 @@ export function FloraLoader({
   const sound = useFloraSound();
   const still = Boolean(useReducedMotion());
 
-  // Nothing is chosen until the delay passes, so there is nothing random on
-  // the server to disagree with the browser about.
-  const [activity, setActivity] = useState<Activity | null>(null);
+  // The first frame is fixed, so the server can draw it and it is on screen
+  // before any JavaScript has arrived. As soon as the browser can, it picks a
+  // trick and a tip at random — well before the CSS reveal below finishes.
+  const [activity, setActivity] = useState<Activity>(defaultActivity(screen));
   const [tip, setTip] = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => {
       setActivity(firstActivity(screen, new Date().getHours(), Math.random()));
       setTip(firstTip(Math.random()));
-    }, DELAY_MS);
+    }, 0);
     return () => clearTimeout(t);
   }, [screen]);
 
   // One tip at a time. Under reduced motion the first one simply stays.
   useEffect(() => {
-    if (!activity || still) return;
+    if (still) return;
     const t = setInterval(() => setTip((i) => (i + 1) % TIPS.length), TIP_MS);
     return () => clearInterval(t);
   }, [activity, still]);
 
   function onTap() {
-    if (!activity) return;
     const next = nextActivity(screen, new Date().getHours(), activity);
     setActivity(next);
     if (sound) {
@@ -93,13 +92,11 @@ export function FloraLoader({
     );
   }
 
-  const card = activity && (
-    <motion.div
-      initial={{ opacity: 0, y: 18, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={SOFT_SPRING}
-      className="pointer-events-auto w-[19rem] max-w-full rounded-card bg-paper px-4 pb-4 pt-3 shadow-lift"
-    >
+  // Revealed by CSS (.flora-reveal in globals.css), not by a timer in
+  // JavaScript: on a first load the script arrives after the page, and a
+  // JS-timed Flora would never get her turn.
+  const card = (
+    <div className="flora-reveal pointer-events-auto w-[19rem] max-w-full rounded-card bg-paper px-4 pb-4 pt-3 shadow-lift">
       <motion.button
         type="button"
         onClick={onTap}
@@ -141,7 +138,7 @@ export function FloraLoader({
           </motion.p>
         </AnimatePresence>
       </div>
-    </motion.div>
+    </div>
   );
 
   if (variant === "overlay") {

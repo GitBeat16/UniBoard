@@ -14,6 +14,7 @@ import {
 import { batchesIn, Grid, type TimetableGrid } from "@/lib/ics/grid";
 import { seriesIdFor, seriesKeyOf } from "@/lib/ics/series";
 import { matchRows } from "@/lib/attendance/match";
+import { parseSubjectEdit, sameName } from "@/lib/attendance/subject-form";
 import {
   readAttendanceImage,
   readAttendanceText,
@@ -759,4 +760,159 @@ export async function importAttendance(
 function todayIn(timeZone: string) {
   const d = wallToday(new Date(), timeZone);
   return `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}`;
+}
+
+/**
+ * Correct a subject: its name, code, colour, threshold, or the college's
+ * attendance figure for it.
+ *
+ * A photo is read well but not perfectly, and an attendance screenshot the
+ * same — so every subject has to be fixable by hand. A figure typed here is
+ * recorded as the student's own ("hand"), so it is clear where it came from.
+ */
+export async function updateSubject(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "You need to be signed in." };
+
+  const id = String(formData.get("id") ?? "");
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, message: "That subject is gone." };
+
+  const timeZone = zoneOrFallback(formData.get("tz"));
+  const fields = Object.fromEntries(
+    [...formData.entries()].map(([k, v]) => [k, typeof v === "string" ? v : undefined]),
+  );
+  const parsed = parseSubjectEdit(fields, todayIn(timeZone));
+  if (!parsed.ok) return { ok: false, message: parsed.message };
+  const edit = parsed.value;
+
+  const { data: mine } = await supabase.from("modules").select("id, name, official_attended, official_held, official_as_of");
+  const current = mine?.find((m) => m.id === id);
+  if (!current) return { ok: false, message: "That subject is gone." };
+
+  // Renaming onto another subject's name would leave two of the same: that is
+  // a merge, and it should be one on purpose.
+  const clash = mine?.find((m) => m.id !== id && sameName(m.name, edit.name));
+  if (clash) {
+    return {
+      ok: false,
+      message: `You already have ${clash.name}. Merge this into it instead.`,
+    };
+  }
+
+  const officialChanged =
+    (edit.official?.attended ?? null) !== current.official_attended ||
+    (edit.official?.held ?? null) !== current.official_held ||
+    (edit.official?.asOf ?? null) !== current.official_as_of;
+
+  const { error } = await supabase
+    .from("modules")
+    .update({
+      name: edit.name,
+      code: edit.code,
+      color_token: edit.tone,
+      threshold: edit.threshold,
+      official_attended: edit.official?.attended ?? null,
+      official_held: edit.official?.held ?? null,
+      official_as_of: edit.official?.asOf ?? null,
+      // Only re-label the source when the figure itself was touched.
+      ...(officialChanged ? { official_source: edit.official ? "hand" : null } : {}),
+    })
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/timetable");
+  revalidatePath("/");
+  return { ok: true, message: `${edit.name} saved.` };
+}
+
+/** Fold a misread duplicate into the real subject — classes, marks and all. */
+export async function mergeSubject(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "You need to be signed in." };
+
+  const from = String(formData.get("id") ?? "");
+  const into = String(formData.get("into") ?? "");
+  const uuid = z.string().uuid();
+  if (!uuid.safeParse(from).success || !uuid.safeParse(into).success) {
+    return { ok: false, message: "Pick the subject to merge into." };
+  }
+
+  // One database function, one transaction: see merge_modules.sql.
+  const { data: moved, error } = await supabase.rpc("merge_modules", { p_from: from, p_into: into });
+  if (error) return { ok: false, message: error.message };
+
+  revalidatePath("/timetable");
+  revalidatePath("/");
+  revalidatePath("/board");
+  return {
+    ok: true,
+    message: `Merged — ${moved ?? 0} ${moved === 1 ? "class" : "classes"} moved across.`,
+  };
+}
+
+/**
+ * Remove a subject that should not exist at all.
+ *
+ * Its classes and their marks go with it; hand-ins and exams stay, just
+ * unlinked. The sheet asks twice before calling this.
+ */
+export async function deleteSubject(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: "You need to be signed in." };
+
+  const id = String(formData.get("id") ?? "");
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, message: "That subject is gone." };
+
+  const { data: removed, error } = await supabase
+    .from("modules")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select("name");
+  if (error) return { ok: false, message: error.message };
+  if (!removed?.length) return { ok: false, message: "That subject is gone." };
+
+  revalidatePath("/timetable");
+  revalidatePath("/");
+  revalidatePath("/board");
+  return { ok: true, message: `${removed[0].name} removed.` };
+}
+
+/** Take a mark back off a class, so it counts as unmarked again. */
+export async function clearAttendance(sessionId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  // Scoped by both ids: RLS already limits the row to this student, and the
+  // session check matches markAttendance's, so the two stay symmetrical.
+  await supabase
+    .from("attendance_records")
+    .delete()
+    .eq("session_id", sessionId)
+    .eq("user_id", user.id);
+
+  revalidatePath("/timetable");
+  revalidatePath("/");
 }

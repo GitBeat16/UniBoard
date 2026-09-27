@@ -11,6 +11,7 @@ import { AttendanceSummary } from "@/components/timetable/attendance-summary";
 import { ImportPanel } from "@/components/timetable/import-panel";
 import { SessionCard } from "@/components/timetable/session-card";
 import { ClassSheet } from "@/components/timetable/class-sheet";
+import { SubjectSheet, type SubjectRow } from "@/components/timetable/subject-sheet";
 import { WeekStrip, dayKey } from "@/components/timetable/week-strip";
 import { EASE_SOFT } from "@/lib/motion";
 import { useNow } from "@/lib/use-now";
@@ -54,9 +55,12 @@ function startOfWeek(d: Date) {
 export function TimetableView({
   sessions,
   modules,
+  subjects = [],
 }: {
   sessions: SessionVM[];
   modules: ModuleAttendance[];
+  /** Each subject as stored, for the sheet that corrects it. */
+  subjects?: SubjectRow[];
 }) {
   /**
    * Dates are grouped and formatted in the viewer's timezone. Doing that during
@@ -70,6 +74,9 @@ export function TimetableView({
   const [selected, setSelected] = useState<string | null>(null);
   // Which class the sheet is changing, or "new" when one is being added.
   const [editing, setEditing] = useState<SessionVM | "new" | null>(null);
+  // Which subject's sheet is open.
+  const [subjectId, setSubjectId] = useState<string | null>(null);
+  const openSubject = subjects.find((s) => s.id === subjectId) ?? null;
 
   const byDay = useMemo(() => {
     const map = new Map<string, SessionVM[]>();
@@ -227,7 +234,11 @@ export function TimetableView({
           </div>
 
           <div className="flex min-w-0 flex-col gap-8">
-          <AttendanceSummary modules={modules} today={todayKey()} />
+          <AttendanceSummary
+            modules={modules}
+            today={todayKey()}
+            onEdit={subjects.length ? setSubjectId : undefined}
+          />
 
           <section>
             <h2 className="text-caption font-semibold uppercase text-muted">
@@ -248,6 +259,18 @@ export function TimetableView({
             dayKey={activeKey}
             modules={modules}
             onClose={() => setEditing(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {openSubject && (
+          <SubjectSheet
+            key={openSubject.id}
+            subject={openSubject}
+            others={subjects.filter((s) => s.id !== openSubject.id)}
+            today={todayKey()}
+            onClose={() => setSubjectId(null)}
           />
         )}
       </AnimatePresence>

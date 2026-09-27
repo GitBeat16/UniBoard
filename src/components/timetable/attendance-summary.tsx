@@ -20,10 +20,13 @@ const STATUS: Record<
 export function AttendanceSummary({
   modules,
   today,
+  onEdit,
 }: {
   modules: ModuleAttendance[];
   /** Today on the student's calendar, for the "up to" date. */
   today: string;
+  /** Opens the sheet that corrects a subject and its figures. */
+  onEdit?: (moduleId: string) => void;
 }) {
   if (modules.length === 0) return null;
 
@@ -40,7 +43,29 @@ export function AttendanceSummary({
 
           return (
             <Rise key={m.moduleId}>
-              <Card className="flex items-center gap-4 p-4">
+              <Card
+                className={cn(
+                  "relative flex items-center gap-4 p-4",
+                  onEdit && "transition-shadow hover:shadow-lift",
+                )}
+              >
+                {/* The whole card is the way in; a pencil says so. */}
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={() => onEdit(m.moduleId)}
+                    aria-label={`Edit ${m.name} and its attendance`}
+                    className="absolute inset-0 z-10 rounded-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+                  />
+                )}
+                {onEdit && (
+                  <span className="absolute right-3 top-3 text-muted" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 20.2c-.2-1.1.2-2.6.6-3.6L15.1 6.1c.6-.6 1.5-.6 2.1 0l1.4 1.3c.6.6.7 1.6.1 2.2L8.1 20.2c-1 .4-2.5.7-3.6.6Z" />
+                      <path d="m13.6 7.7 3.4 3.3" />
+                    </svg>
+                  </span>
+                )}
                 <SketchRing
                   value={m.percent ?? 0}
                   seedKey={m.moduleId}

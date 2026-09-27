@@ -257,3 +257,38 @@ body {
     --stub: 9rem;
   }
 }
+
+/* ------------------------------------------------------------ Flora loading
+   Revealed by CSS rather than by a timer in JavaScript: on a first load the
+   script arrives after the page, so only CSS can time her in. The beat before
+   she appears keeps an instant load from flashing her. */
+@keyframes flora-reveal {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+.flora-reveal {
+  opacity: 0;
+  animation: flora-reveal 0.4s cubic-bezier(0.22, 1, 0.36, 1) 150ms forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flora-reveal { animation-duration: 0.01s; }
+}
+
+/* ------------------------------------------------------ the first-open splash
+   Hidden before paint on a reload in the same session (the inline script in
+   the (app) layout sets data-splash), lifted by React once the app is ready,
+   and — should the JavaScript never arrive — lifted by CSS after six seconds,
+   so it can never trap anyone. */
+@keyframes splash-away {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+.first-splash {
+  animation: splash-away 0.4s ease 6s forwards;
+}
+.first-splash.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+html[data-splash="seen"] .first-splash { display: none; }
+html[data-flora="off"] .splash-flora { display: none; }

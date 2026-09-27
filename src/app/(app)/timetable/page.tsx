@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchAll } from "@/lib/supabase/fetch-all";
 import { asTone } from "@/lib/tones";
 import type { SessionVM } from "@/lib/view-models";
+import type { SubjectRow } from "@/components/timetable/subject-sheet";
 
 const DEFAULT_THRESHOLD = 75;
 
@@ -88,7 +89,25 @@ export default async function TimetablePage() {
     // Most urgent first: below threshold, then thin, then the rest.
     .sort((a, b) => rank(a.status) - rank(b.status) || a.name.localeCompare(b.name));
 
-  return <TimetableView sessions={vms} modules={stats} />;
+  // The raw values behind each ring, for the sheet that corrects them: the
+  // stats above are computed, and a form has to start from what is stored.
+  const classCount = new Map<string, number>();
+  for (const s of sessions ?? []) classCount.set(s.module_id, (classCount.get(s.module_id) ?? 0) + 1);
+  const subjects: SubjectRow[] = (modules ?? []).map((m) => ({
+    id: m.id,
+    name: m.name,
+    code: m.code,
+    tone: asTone(m.color_token),
+    threshold: m.threshold === null ? null : Number(m.threshold),
+    defaultThreshold: uniThreshold,
+    official:
+      m.official_attended !== null && m.official_held !== null && m.official_as_of !== null
+        ? { attended: m.official_attended, held: m.official_held, asOf: m.official_as_of }
+        : null,
+    classes: classCount.get(m.id) ?? 0,
+  }));
+
+  return <TimetableView sessions={vms} modules={stats} subjects={subjects} />;
 }
 
 function rank(status: ModuleAttendance["status"]) {

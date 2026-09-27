@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Card } from "@/components/ui/card";
 import { LocalTime } from "@/components/ui/local-time";
@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { EASE_SOFT, SOFT_SPRING, press } from "@/lib/motion";
 import { toneBg, toneSoft, toneText } from "@/lib/tones";
 import { SESSION_TYPE_LABEL, type SessionVM } from "@/lib/view-models";
-import { markAttendance } from "@/app/(app)/timetable/actions";
+import { clearAttendance, markAttendance } from "@/app/(app)/timetable/actions";
 import { tellFlora } from "@/lib/flora/bus";
 import type { Enums } from "@/lib/supabase/database.types";
 
@@ -31,6 +31,8 @@ export function SessionCard({
   onEdit?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
+  // Open while she is changing a mark she already made.
+  const [changing, setChanging] = useState(false);
   const started = new Date(session.startsAt).getTime() <= now;
 
   function mark(status: Enums<"attendance_status">) {
@@ -39,6 +41,14 @@ export function SessionCard({
       // Marking a class and getting nothing back is the moment she stops
       // feeling like a companion.
       tellFlora(status === "absent" ? "marked-absent" : "marked-present");
+      setChanging(false);
+    });
+  }
+
+  function clear() {
+    startTransition(async () => {
+      await clearAttendance(session.id);
+      setChanging(false);
     });
   }
 
@@ -116,13 +126,60 @@ export function SessionCard({
               </span>
               <button
                 type="button"
-                onClick={() => mark(session.status === "absent" ? "present" : "absent")}
+                onClick={() => setChanging((c) => !c)}
+                aria-expanded={changing}
                 className="text-label text-muted underline underline-offset-4 hover:text-ink"
               >
-                Change
+                {changing ? "Keep it" : "Change"}
               </button>
             </motion.div>
-          ) : started ? (
+          ) : null}
+        </AnimatePresence>
+
+        {/* Every mark, not just the opposite one: late and excused count
+            differently, and a mark made by mistake can come off entirely. */}
+        <AnimatePresence initial={false}>
+          {session.status && changing && (
+            <motion.div
+              key="change"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22, ease: EASE_SOFT }}
+              className="overflow-hidden"
+            >
+              <div className="flex flex-wrap gap-2 pt-3">
+                {(
+                  [
+                    ["present", "Went", "leaf"],
+                    ["late", "Late", "leaf"],
+                    ["absent", "Missed", "coral"],
+                    ["excused", "Excused", "leaf"],
+                  ] as const
+                )
+                  .filter(([status]) => status !== session.status)
+                  .map(([status, label, tone]) => (
+                    <MarkButton key={status} onClick={() => mark(status)} tone={tone}>
+                      {label}
+                    </MarkButton>
+                  ))}
+                <button
+                  type="button"
+                  onClick={clear}
+                  className="rounded-full px-4 py-2 text-label font-semibold text-muted hover:bg-canvas hover:text-ink"
+                >
+                  Clear mark
+                </button>
+              </div>
+              <p className="mt-2 text-caption text-muted">
+                Excused leaves the class out of the maths altogether.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence mode="wait" initial={false}>
+          {session.status ? null : started ? (
             <motion.div
               key="ask"
               initial={{ opacity: 0, y: 6 }}

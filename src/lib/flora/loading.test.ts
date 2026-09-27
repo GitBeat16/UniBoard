@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ACTIVITY,
+  defaultActivity,
   firstActivity,
   firstTip,
   isLate,
@@ -58,6 +59,17 @@ describe("what she does while it loads", () => {
     for (const a of Object.values(ACTIVITY)) {
       expect(a.caption.length).toBeGreaterThan(10);
       expect(a.caption.length).toBeLessThan(60);
+    }
+  });
+});
+
+describe("the first frame, drawn on the server", () => {
+  it("is fixed per screen and belongs on it", () => {
+    expect(defaultActivity("money")).toBe("coins");
+    expect(defaultActivity("board")).toBe(defaultActivity("board"));
+    for (const screen of ["home", "timetable", "board", "money"] as const) {
+      expect(poolFor(screen, 12)).toContain(defaultActivity(screen));
+      expect(defaultActivity(screen)).not.toBe("sleeping");
     }
   });
 });

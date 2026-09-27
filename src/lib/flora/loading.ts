@@ -42,6 +42,15 @@ const POOLS: Record<LoadingScreen, Activity[]> = {
   money: ["coins"],
 };
 
+/**
+ * The trick for the very first frame — rendered on the server, before the
+ * browser's clock or any randomness is available, so it must be fixed. The
+ * browser swaps in a random one as soon as it can, before she is revealed.
+ */
+export function defaultActivity(screen: LoadingScreen): Activity {
+  return POOLS[screen][0];
+}
+
 /** She only nods off when it is actually late — never as a hint that you should. */
 export function isLate(hour: number) {
   return hour >= 23 || hour < 5;

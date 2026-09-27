@@ -702,6 +702,10 @@ export type Database = {
           unmarked: number
         }[]
       }
+      merge_modules: {
+        Args: { p_from: string; p_into: string }
+        Returns: number
+      }
       calendar_feed: {
         Args: { p_token: string }
         Returns: {
