@@ -356,11 +356,11 @@ supabase/migrations/     schema, RLS — one file per live migration, named by i
   them, and each file says what was changed for UniBoard. Most need nothing beyond
   `motion`: BlurText (the closing line), RotatingText ("it keeps your ___
   straight"), ShinyText (the eyebrow), ScrollVelocity (the felt band), CountUp (the
-  numbers), SpotlightCard (the feature and privacy cards), Magnet (the calls to
-  action) and ClickSpark (sparks on click). `landing-bits.tsx` dresses them in
+  numbers), SpotlightCard (the feature and privacy cards) and ClickSpark (sparks on click). `landing-bits.tsx` dresses them in
   UniBoard's colours; the page itself stays a static server component. Without
   JavaScript a `<noscript>` rule un-blurs the closing line; under reduced motion the
-  band holds still and the buttons stop leaning. Two go further:
+  band holds still and the buttons stop lifting. (The buttons
+  lift and press with plain CSS; the old Magnet lean was taken out.) Two go further:
   - **TextPressure** (the hero headline, "Your whole uni day, on one board.", one
     instance per line) needs a variable font; Roboto Flex is self-hosted with
     `next/font` on `/welcome` only, never fetched at runtime. Its original global

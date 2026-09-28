@@ -7,10 +7,10 @@ import { Pin } from "@/components/board/pin";
 import { TourGallery } from "@/components/landing/tour-gallery";
 import {
   ClosingHeadline,
+  CtaLink,
   Eyebrow,
   FeatureBand,
   HeroHeadline,
-  MagneticLink,
   Numbers,
   Reveal,
   RotatingLine,
@@ -153,10 +153,10 @@ export default function WelcomePage() {
                 into what today can take.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <MagneticLink href="/sign-in">Get started — it&rsquo;s free</MagneticLink>
-                <MagneticLink href="#tour" variant="soft">
+                <CtaLink href="/sign-in">Get started — it&rsquo;s free</CtaLink>
+                <CtaLink href="#tour" variant="soft">
                   Take the tour
-                </MagneticLink>
+                </CtaLink>
               </div>
               <p className="mt-4 text-label text-ink/70">
                 No email needed to look around — start as a guest and keep everything later.
@@ -268,7 +268,7 @@ export default function WelcomePage() {
               Import your timetable in under a minute. Start as a guest if you&rsquo;d rather not sign up yet.
             </p>
             <div className="mt-8">
-              <MagneticLink href="/sign-in">Get started</MagneticLink>
+              <CtaLink href="/sign-in">Get started</CtaLink>
             </div>
           </section>
         </main>

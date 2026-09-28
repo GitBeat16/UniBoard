@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import BlurText from "@/components/reactbits/BlurText";
 import CountUp from "@/components/reactbits/CountUp";
-import Magnet from "@/components/reactbits/Magnet";
 import RotatingText from "@/components/reactbits/RotatingText";
 import ShinyText from "@/components/reactbits/ShinyText";
 import TextPressure from "@/components/reactbits/TextPressure";
@@ -95,10 +94,11 @@ export function RotatingLine() {
 }
 
 /**
- * A call to action that leans towards the pointer. Held still under reduced
- * motion, and a no-op on touch, which has no pointer to lean towards.
+ * A call to action that lifts a little on hover (with a deeper shadow) and
+ * presses down on click. Plain CSS, so it costs nothing and needs no
+ * JavaScript; held still under reduced motion.
  */
-export function MagneticLink({
+export function CtaLink({
   href,
   children,
   variant = "primary",
@@ -109,21 +109,21 @@ export function MagneticLink({
   variant?: "primary" | "soft";
   className?: string;
 }) {
-  const still = Boolean(useReducedMotion());
   return (
-    <Magnet padding={70} magnetStrength={4} disabled={still}>
-      <Link
-        href={href}
-        className={cn(
-          "inline-flex h-14 items-center justify-center rounded-full px-8 text-label font-semibold shadow-soft transition-colors",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
-          variant === "primary" ? "bg-ink text-paper hover:bg-ink/90" : "bg-paper text-ink hover:bg-canvas",
-          className,
-        )}
-      >
-        {children}
-      </Link>
-    </Magnet>
+    <Link
+      href={href}
+      className={cn(
+        "inline-flex h-14 items-center justify-center rounded-full px-8 text-label font-semibold shadow-soft",
+        "transition-[translate,scale,box-shadow,background-color] duration-200 ease-soft",
+        "hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0 active:scale-[0.97] active:shadow-soft active:duration-75",
+        "motion-reduce:transition-colors motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink",
+        variant === "primary" ? "bg-ink text-paper hover:bg-ink/90" : "bg-paper text-ink hover:bg-canvas",
+        className,
+      )}
+    >
+      {children}
+    </Link>
   );
 }
 
